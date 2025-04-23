@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KNOTBRIDGE - SOON</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700" rel="stylesheet" type="text/css">
+
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <img src="./logo.png" alt="Logo" class="center-logo" />
+
+  <article id="wrap">
+    <article id="lightings">
+      <section id="one">
+        <section id="two">
+          <section id="three">
+            <section id="four">
+              <section id="five">
+              </section>
+            </section>
+          </section>
+        </section>
+      </section>
+    </article>
+  </article>
+
+  <!-- Footer -->
+  <footer class="footer-message">
+    <p>© Knotbridge — All rights reserved.</p>
+    <p>We are coming — and the world will not be the same.</p>
+  </footer>
+
+  <!-- Audio element -->
+  <audio id="mySound" src="./space.mp3" loop muted></audio>
+
+  <script>
+    // Wait for window to load, then set up audio play
+    window.onload = function() {
+      const audio = document.getElementById('mySound');
+      
+      // Play the sound (initially muted)
+      audio.play().catch(error => {
+        console.error("Playback failed:", error);
+      });
+
+      // Unmute the sound after a short delay to ensure autoplay works
+      setTimeout(() => {
+        audio.muted = false;
+      }, 200);  // Delay in milliseconds
+    };
+  </script>
+</body>
+</html>
