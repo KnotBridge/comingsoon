@@ -4,57 +4,2248 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>R'NQ™ - Work in Progress</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <title>Light Ray Depth Icons</title>
+  <style>
+    * {
+      user-select: none;
+      -webkit-user-drag: none;
+      /* Prevents dragging images in Safari/Chrome */
+      -webkit-touch-callout: none;
+      /* Disables touch callouts (iOS) */
+    }
 
-  <!-- Google Font -->
-  <link href="https://fonts.googleapis.com/css?family=Lato:300,400,700" rel="stylesheet" type="text/css">
+    :root {
+      --glow-green: rgba(0, 255, 0, 0);
+      --glow-red: rgba(255, 0, 0, 0);
+    }
 
-  <!-- Link to external CSS -->
-  <link rel="stylesheet" href="styles.css" />
+    @font-face {
+      font-family: 'FuturaLT';
+      src: url('./PassionOne-Regular.ttf') format('truetype');
+    }
+
+    @font-face {
+      font-family: 'Inter';
+      src: url('./helvetica-now-text-medium.ttf') format('truetype');
+
+    }
+
+    body {
+      margin: 0;
+
+    }
+
+    .hero {
+      overflow: hidden;
+      background: #000000;
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      perspective: 1000px;
+
+      h1 {
+        position: absolute;
+        z-index: 5;
+        top: 150px;
+        left: 400px;
+        line-height: 0.75em;
+        letter-spacing: -4px;
+        font-size: 8rem;
+        font-family: 'FuturaLT', sans-serif;
+        margin-bottom: 1rem;
+        color: rgb(235, 235, 235);
+        text-align: center;
+        font-weight: 300;
+      }
+
+      p {
+        text-align: center;
+        font-size: 2rem;
+        font-family: 'Inter', sans-serif;
+        margin-bottom: 2rem;
+        color: white;
+        position: absolute;
+        top: 440px;
+        left: 420px;
+      }
+    }
+
+    .light-beam {
+      position: absolute;
+      top: -30%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300%;
+      height: 300%;
+      background: radial-gradient(ellipse at center top,
+          rgba(255, 0, 72, 0.8) 0%,
+          transparent 60%);
+      mask-image: linear-gradient(to bottom, white 20%, transparent 100%);
+      pointer-events: none;
+      z-index: 1;
+
+      animation: beamPulse 6s infinite ease-in-out alternate;
+    }
+
+    @keyframes beamPulse {
+      0% {
+        opacity: 0.7;
+        transform: translateX(-50%) scale(1) rotate(0deg);
+      }
+
+      25% {
+        opacity: 0.9;
+        transform: translateX(-50%) scale(1.03) rotate(-0.3deg);
+      }
+
+      50% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.02) rotate(0.2deg);
+      }
+
+      75% {
+        opacity: 0.7;
+        transform: translateX(-50%) scale(1.04) rotate(-0.4deg);
+      }
+
+      100% {
+        opacity: 0.9;
+        transform: translateX(-50%) scale(1.01) rotate(0.3deg);
+      }
+    }
+
+
+    .icons-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      z-index: 2;
+    }
+
+    .icon {
+      position: absolute;
+      width: var(--size);
+      height: var(--size);
+      top: var(--top);
+      left: var(--left);
+      opacity: var(--opacity);
+      filter: blur(var(--blur));
+      transform: scale(var(--scale)) translateZ(var(--z));
+      transition: transform 2s ease-in-out;
+      animation: floatZ 12s ease-in-out infinite;
+    }
+
+    @keyframes floatZ {
+
+      0%,
+      100% {
+        transform: scale(var(--scale)) translateZ(var(--z));
+      }
+
+      50% {
+        transform: scale(calc(var(--scale) * 1.05)) translateZ(calc(var(--z) + 45px));
+      }
+    }
+
+    .navbar {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 2rem;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 90%;
+      max-width: 1000px;
+      border: 1px solid rgba(168, 168, 168, 0.5);
+    }
+
+    .phone {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: white;
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      transition: color 0.3s;
+
+      i {
+        color: #ff0048
+      }
+    }
+
+    .phone:hover i {
+      animation: ring 0.4s infinite;
+    }
+
+    .logo {
+      flex: 0 0 auto;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .logo img {
+      height: 2.5rem;
+      vertical-align: middle;
+    }
+
+    .menu {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      width: 5rem;
+      flex-shrink: 0;
+      cursor: pointer;
+      z-index: 101;
+    }
+
+    .menu i {
+      color: white;
+      font-size: 1.2rem;
+      transition: transform 0.3s ease, color 0.3s ease;
+    }
+
+    .menu.active i {
+      transform: rotate(90deg);
+      color: #ff0048
+    }
+
+    .menu:hover i {
+      color: #ff0048
+    }
+
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      color: white;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(0px);
+      /* Initial state: no blur */
+      -webkit-backdrop-filter: blur(0px);
+      z-index: 90;
+      justify-content: center;
+      align-items: center;
+      transition: backdrop-filter 0.5s ease, -webkit-backdrop-filter 0.5s ease;
+      /* Gradual blur transition */
+    }
+
+    .menu-overlay.active {
+      display: flex;
+      backdrop-filter: blur(50px);
+      /* Final blurred state */
+      -webkit-backdrop-filter: blur(50px);
+    }
+
+    .menu-list {
+      list-style: none;
+      padding: 0;
+      text-align: center;
+    }
+
+    .menu-list li {
+      line-height: 0.8em;
+      letter-spacing: -4px;
+      font-size: 6rem;
+      font-family: 'FuturaLT', sans-serif;
+      font-weight: 300;
+      opacity: 0;
+      transform: translateY(-10px);
+      animation: slideIn 0.5s forwards;
+    }
+
+    .menu-list li:nth-child(1) {
+      animation-delay: 0.1s;
+    }
+
+    .menu-list li:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .menu-list li:nth-child(3) {
+      animation-delay: 0.3s;
+    }
+
+    .menu-list li:nth-child(4) {
+      animation-delay: 0.4s;
+    }
+
+    .menu-list li:nth-child(5) {
+      animation-delay: 0.5s;
+    }
+
+    .menu-list li:nth-child(6) {
+      animation-delay: 0.6s;
+    }
+
+    .menu-list li:nth-child(7) {
+      animation-delay: 0.7s;
+    }
+
+    .menu-list li:nth-child(8) {
+      animation-delay: 0.8s;
+    }
+
+    .menu-list li:nth-child(9) {
+      animation-delay: 0.9s;
+    }
+
+    @keyframes ring {
+      0% {
+        transform: translateX(0) rotate(0deg);
+      }
+
+      25% {
+        transform: translateX(2px) rotate(0deg);
+      }
+
+      /* Slight horizontal ring */
+      50% {
+        transform: translateX(-2px) rotate(5deg);
+      }
+
+      /* Start rotation */
+      75% {
+        transform: translateX(2px) rotate(0deg);
+      }
+
+      /* Return to slight ring */
+      100% {
+        transform: translateX(0) rotate(0deg);
+      }
+
+      /* Reset */
+    }
+
+    @keyframes slideIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideIn {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .navbar {
+        width: 95%;
+        padding: 0.5rem 1rem;
+      }
+
+      .phone {
+        font-size: 0.9rem;
+      }
+
+      .logo img {
+        height: 1.5rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .navbar {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 1rem;
+      }
+
+      .phone,
+      .spacer {
+        width: 100%;
+        text-align: center;
+      }
+
+      .logo {
+        order: -1;
+      }
+    }
+
+
+
+    .story-section {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .notebook-wrapper {
+      display: flex;
+      justify-content: center;
+      padding: 100px 20px;
+    }
+
+    .notebook-paper {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      background: rgba(255, 255, 255, 0.97);
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+
+    }
+
+    .notebook-paper::before {
+      content: '';
+      position: absolute;
+      left: 48px;
+      top: 0;
+      height: 100%;
+      width: 2px;
+      background: rgba(255, 0, 0, 0.2);
+      z-index: 1;
+    }
+
+    .notebook-lines {
+      padding: 60px 40px 40px 70px;
+      background-image: repeating-linear-gradient(white 0px, white 39px, #c3d7f3 40px);
+      background-size: 100% 40px;
+
+    }
+
+    .story-div p {
+      font-size: 2rem;
+      font-family: 'Inter', sans-serif;
+      margin-bottom: 3.5rem;
+      color: #222;
+    }
+
+
+    .notebook-hole {
+      position: absolute;
+      left: 20px;
+      height: 20px;
+      width: 20px;
+      background: #ffffff;
+      border-radius: 50%;
+      box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.25);
+      z-index: 2;
+    }
+
+    .hole-top {
+      top: 10%;
+    }
+
+    .hole-middle {
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .hole-bottom {
+      bottom: 10%;
+    }
+
+
+    .fire {
+      color: #f5f5f5;
+      /* Light text color */
+      /* Multi-layered text-shadow for fire effect */
+      text-shadow:
+        0px -1px 3px #fff,
+        /* Innermost layer - intense heat (white) */
+        0px -2px 6px #FF3,
+        /* Second layer - core of flame (yellow) */
+        0px -6px 12px #F90,
+        /* Middle layer - body of flame (orange) */
+        0px -10px 20px #C33;
+      /* Outermost layer - edges of flame (red) */
+    }
+
+    /* Define the animation named "flicker" */
+    @keyframes flicker {
+
+      /* Initial state of animation */
+      0%,
+      /* Final state of animation */
+      100% {
+        text-shadow:
+          0 -1px 3px #fff,
+          /* Innermost layer - intense heat (white) */
+          0 -2px 6px #FF3,
+          /* Second layer - core of flame (yellow) */
+          0 -6px 12px #F90,
+          /* Middle layer - body of flame (orange) */
+          0 -10px 20px #C33;
+        /* Outermost layer - edges of flame (red) */
+      }
+
+      /* Middle state of animation */
+      50% {
+        text-shadow:
+          0 -2px 6px #fff,
+          /* Innermost layer - intense heat (white) */
+          0 -4px 12px #FF3,
+          /* Second layer - core of flame (yellow) */
+          0 -8px 16px #F90,
+          /* Middle layer - body of flame (orange) */
+          0 -12px 24px #C33;
+        /* Outermost layer - edges of flame (red) */
+      }
+    }
+
+    .fire {
+      /* Apply the "flicker" animation to the .fire class */
+      animation: flicker 2s infinite;
+    }
+
+    .email-input-container {
+      display: flex;
+      align-items: center;
+      border-radius: 9999px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      background-color: #f0f0f0;
+      width: 900px;
+      position: absolute;
+      top: 600px;
+      left: 530px;
+      padding-left: 20px;
+      overflow: visible;
+    }
+
+    .email-input-container input {
+      border: none;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 20px;
+      flex: 1;
+      background-color: transparent;
+      color: #333;
+    }
+
+    .email-input-container input::placeholder {
+      color: #444;
+    }
+
+    .email-input-container .emoji {
+      margin-left: 16px;
+      font-size: 20px;
+    }
+
+
+    .button-wrapper {
+      position: relative;
+      display: inline-block;
+      /* keeps layout sane */
+    }
+
+    .gold-button {
+      position: relative;
+      background: linear-gradient(120deg,
+          #cf9f00 0%,
+          #dfae00 20%,
+          #ffe066 40%,
+          #d4af37 60%,
+          #b89000 80%,
+          #3b2d00 100%);
+      background-size: 200% 200%;
+      color: #111;
+      border: none;
+      padding: 20px 40px;
+      font-size: 32px;
+      font-family: 'FuturaLT', sans-serif;
+      font-weight: 500;
+      letter-spacing: -1px;
+      cursor: pointer;
+      overflow: hidden;
+      border-radius: 0;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.4),
+        0 0 10px rgba(255, 215, 0, 0.3),
+        0 0 20px rgba(255, 215, 0, 0.2);
+      transition: transform 0.2s ease;
+      z-index: 1;
+      border-top-right-radius: 9999px;
+      border-bottom-right-radius: 9999px;
+    }
+
+    /* Sliding Shine (upgraded) */
+    .gold-button::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -75%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(to right,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.4) 50%,
+          rgba(255, 255, 255, 0) 100%);
+      transform: skewX(-25deg);
+      animation: shine 2s ease-in-out infinite;
+      z-index: 2;
+      pointer-events: none;
+      filter: blur(2px) brightness(1.5);
+    }
+
+    @keyframes shine {
+      0% {
+        left: -75%;
+      }
+
+      50% {
+        left: 100%;
+      }
+
+      100% {
+        left: 100%;
+      }
+    }
+
+    /* Flickering PNG Shine (static pulse) */
+    .shine-png {
+      position: absolute;
+      top: -35px;
+      right: -10px;
+      width: 80px;
+      height: 80px;
+      background-image: url('Shine.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      animation: flickerShine 2s infinite ease-in-out;
+      z-index: 2;
+      mix-blend-mode: screen;
+      pointer-events: none;
+      filter: brightness(1.4);
+      opacity: 0.9;
+    }
+
+    @keyframes flickerShine {
+
+      0%,
+      100% {
+        filter: brightness(1.3);
+        opacity: 0.7;
+      }
+
+      50% {
+        filter: brightness(2.4);
+        opacity: 1;
+      }
+
+      75% {
+        filter: brightness(1.7);
+        opacity: 0.8;
+      }
+    }
+
+    /* Hover Scale */
+    .gold-button:hover {
+      transform: scale(1.03);
+    }
+
+
+    .email-input-container button span {
+      margin-left: 8px;
+      font-size: 18px;
+    }
+
+    .bold-story {
+      font-size: 40px;
+      font-family: 'FuturaLT', sans-serif;
+      font-weight: 500;
+      letter-spacing: -1px;
+    }
+
+    .solution {
+      padding: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #111;
+      height: 100vh;
+
+      h1 {
+        z-index: 5;
+        top: 150px;
+        left: 400px;
+        line-height: 0.75em;
+        letter-spacing: -4px;
+        font-size: 8rem;
+        font-family: 'FuturaLT', sans-serif;
+        color: rgb(235, 235, 235);
+        text-align: center;
+        font-weight: 300;
+        margin: 0px;
+      }
+
+      p {
+        width: 45%;
+        text-align: center;
+        font-size: 2rem;
+        font-family: 'Inter', sans-serif;
+        margin-bottom: 2rem;
+        color: white;
+        top: 440px;
+        left: 420px;
+      }
+    }
+
+    .trust {
+      padding: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+
+      .title {
+        text-transform: uppercase;
+        z-index: 5;
+        top: 150px;
+        left: 400px;
+        line-height: 0.75em;
+        letter-spacing: -5px;
+        font-size: 7.5rem;
+        font-family: 'FuturaLT', sans-serif;
+        color: rgb(0, 0, 0);
+        text-align: center;
+        font-weight: 300;
+        margin: 0px;
+      }
+
+      .subheadline {
+        width: 45%;
+        text-align: center;
+        font-size: 2rem;
+        font-family: 'Inter', sans-serif;
+        margin-bottom: 2rem;
+        color: rgb(0, 0, 0);
+        top: 440px;
+        left: 420px;
+      }
+    }
+
+    .tape {
+      position: absolute;
+      width: 150px;
+      height: 40px;
+      background: rgba(255, 245, 200, 0.8);
+      /* light masking tape color */
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+      z-index: 3;
+      opacity: 0.95;
+    }
+
+    .tape::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(45deg,
+          rgba(0, 0, 0, 0.04),
+          rgba(0, 0, 0, 0.04) 1px,
+          transparent 1px,
+          transparent 4px);
+      pointer-events: none;
+    }
+
+    .tape-top-right {
+      top: -10px;
+      right: -60px;
+      transform: rotate(45deg);
+    }
+
+    .tape-bottom-left {
+      bottom: -10px;
+      left: -60px;
+      transform: rotate(45deg);
+    }
+
+
+    .button-wrapper2 {
+      position: relative;
+      display: inline-block;
+      /* keeps layout sane */
+    }
+
+    .gold-button2 {
+      line-height: 0.8em;
+      position: relative;
+      background: linear-gradient(120deg,
+          #cf9f00 0%,
+          #dfae00 20%,
+          #ffe066 40%,
+          #d4af37 60%,
+          #b89000 80%,
+          #3b2d00 100%);
+      background-size: 200% 200%;
+      color: #ffffff;
+      border: none;
+      padding: 20px;
+      font-size: 55px;
+      font-family: 'FuturaLT', sans-serif;
+      font-weight: 300;
+      letter-spacing: -2px;
+      cursor: pointer;
+      overflow: hidden;
+      border-radius: 0;
+      box-shadow:
+        inset 0 3px 0 rgba(255, 255, 255, 0.4),
+        0 0 70px rgba(255, 215, 0, 0.3),
+        0 0 20px rgba(255, 215, 0, 0.2);
+      transition: transform 0.2s ease;
+      z-index: 1;
+      border-radius: 20px;
+      margin: 0px;
+      text-shadow: 1px 1px 2px rgb(68, 68, 68);
+
+      .subbutton {
+        font-size: 1.8rem;
+        text-shadow: 0px 0px 0px rgb(68, 68, 68);
+        font-family: 'Inter', sans-serif;
+        color: rgb(48, 48, 48);
+      }
+
+    }
+
+    .gold-text {
+      color: rgb(255, 196, 0)
+    }
+
+    /* Sliding Shine (upgraded) */
+    .gold-button2::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -75%;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(to right,
+          rgba(255, 255, 255, 0) 0%,
+          rgba(255, 255, 255, 0.4) 50%,
+          rgba(255, 255, 255, 0) 100%);
+      transform: skewX(-25deg);
+      animation: shine 2s ease-in-out infinite;
+      z-index: 2;
+      pointer-events: none;
+      filter: blur(2px) brightness(1.5);
+    }
+
+    @keyframes shine {
+      0% {
+        left: -75%;
+      }
+
+      50% {
+        left: 100%;
+      }
+
+      100% {
+        left: 100%;
+      }
+    }
+
+    /* Flickering PNG Shine (static pulse) */
+    .shine-png {
+      position: absolute;
+      top: -35px;
+      right: -10px;
+      width: 80px;
+      height: 80px;
+      background-image: url('Shine.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      animation: flickerShine 2s infinite ease-in-out;
+      z-index: 2;
+      mix-blend-mode: screen;
+      pointer-events: none;
+      filter: brightness(1.4);
+      opacity: 0.9;
+    }
+
+    @keyframes flickerShine {
+
+      0%,
+      100% {
+        filter: brightness(1.3);
+        opacity: 0.7;
+      }
+
+      50% {
+        filter: brightness(2.4);
+        opacity: 1;
+      }
+
+      75% {
+        filter: brightness(1.7);
+        opacity: 0.8;
+      }
+    }
+
+    /* Hover Scale */
+    .gold-button2:hover {
+      transform: scale(1.03);
+    }
+
+    .button {
+      width: 60px;
+      height: 60px;
+      background-color: #4CAF50;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    .button:hover {
+      background-color: #45a049;
+      transform: scale(1.1);
+    }
+
+    .button:active {
+      transform: scale(0.95);
+    }
+
+    .play-icon::before {
+      content: '';
+      display: block;
+      width: 0;
+      height: 0;
+      border-left: 20px solid white;
+      border-top: 12px solid transparent;
+      border-bottom: 12px solid transparent;
+    }
+
+    .stop-icon::before {
+      content: '';
+      display: block;
+      width: 16px;
+      height: 16px;
+      background-color: white;
+    }
+
+
+    @-webkit-keyframes scroll {
+      0% {
+        transform: translateX(0);
+      }
+
+      100% {
+        transform: translateX(calc(-250px * 7));
+      }
+    }
+
+    @keyframes scroll {
+      0% {
+        transform: translateX(0);
+      }
+
+      100% {
+        transform: translateX(calc(-250px * 7));
+      }
+    }
+
+    .slider {
+      background: #ffe9e9;
+      height: 100px;
+      margin: auto;
+      overflow: hidden;
+      position: relative;
+      width: 100%;
+    }
+
+    .slider::before,
+    .slider::after {
+      background: linear-gradient(to right, #ffe9e9 0%, rgba(255, 255, 255, 0) 100%);
+      content: "";
+      height: 100px;
+      position: absolute;
+      width: 200px;
+      z-index: 2;
+    }
+
+    .slider::after {
+      right: 0;
+      top: 0;
+      transform: rotateZ(180deg);
+    }
+
+    .slider::before {
+      left: 0;
+      top: 0;
+    }
+
+    .slider .slide-track {
+      -webkit-animation: scroll 40s linear infinite;
+      animation: scroll 40s linear infinite;
+      display: flex;
+      width: calc(250px * 14);
+    }
+
+    .slider .slide {
+      height: 100px;
+      width: 250px;
+    }
+
+
+    .card-row {
+      display: flex;
+      gap: 20px;
+      margin-top: 50px;
+    }
+
+    .card-item {
+      background-color: #fff;
+      border-radius: 15px;
+      padding: 20px;
+      text-align: left;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 350px;
+    }
+
+    .percent-value {
+      color: #ff2e63;
+      font-size: 80px;
+      font-weight: 300;
+      font-family: 'FuturaLT', sans-serif;
+      margin: 0;
+    }
+
+    .card-text {
+      color: #000;
+      font-size: 25px;
+      margin: 10px 0 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+
+    /* .launch-section {
+      position: relative;
+      height: 200vh;
+      background: white;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+
+    .launch-svg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      top: 0;
+      left: 0;
+    }
+
+    .launch-path {
+      stroke: none;
+      fill: none;
+    }
+
+    .launch-rocket {
+      rotate: 90deg;
+      width:200px;
+      position: absolute;
+      transform-origin: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    } */
+
+
+    .tinder {
+      padding: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #2b2b2b;
+
+      .title {
+        text-transform: uppercase;
+        z-index: 5;
+        top: 150px;
+        left: 400px;
+        line-height: 0.75em;
+        letter-spacing: -5px;
+        font-size: 7.5rem;
+        font-family: 'FuturaLT', sans-serif;
+        color: rgb(255, 255, 255);
+        text-align: center;
+        font-weight: 300;
+        margin: 0px;
+        margin-top: 20px;
+      }
+
+      .subheadline {
+        width: 45%;
+        text-align: center;
+        font-size: 2rem;
+        font-family: 'Inter', sans-serif;
+        margin-bottom: 2rem;
+        color: rgb(255, 255, 255);
+        top: 440px;
+        left: 420px;
+      }
+    }
+
+    .ultimate-cta {
+      position: relative;
+      text-align: left;
+    }
+
+    .glow {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: 0;
+      opacity: 0.4;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .glow-red {
+      background: rgb(255, 67, 67);
+      left: -100px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .glow-green {
+      background: rgb(58, 255, 121);
+      right: -100px;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    .tinder-wrapper {
+      width: 370px;
+      height: 480px;
+      border-radius: 24px;
+      overflow: hidden;
+      position: relative;
+      background: url('tinder-bg.png') center/cover no-repeat;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      z-index: 10;
+      transition: transform 0.3s ease;
+    }
+
+    .overlay {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 65%;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+      z-index: 1;
+    }
+
+    .card-content {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      color: white;
+      z-index: 2;
+    }
+
+    .name {
+      font-family: 'FuturaLT', sans-serif;
+      letter-spacing: -2px;
+      font-size: 60px;
+      font-weight: 300;
+      margin: 0;
+    }
+
+    .h2-tinder {
+      font-family: 'FuturaLT', sans-serif;
+      letter-spacing: -1px;
+      font-size: 35px;
+      font-weight: 300;
+      margin-top: 0px;
+      margin-bottom: 4px;
+    }
+
+    .p-tinder {
+      font-size: 20px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      margin: 4px 0;
+    }
+
+    .bold-yellow {
+      color: #ffcc00;
+    }
+
+    .hobies {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .hobbie {
+      background: white;
+      color: #333;
+      padding: 6px 12px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      font-size: 20px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+    }
+
+    .hobbie img {
+      height: 16px;
+      margin-right: 6px;
+    }
+
+    .call {
+      font-family: 'FuturaLT', sans-serif;
+      letter-spacing: 0px;
+      font-size: 35px;
+      font-weight: 300;
+      margin-top: 30px;
+      color: white;
+    }
+
+    .tinder-wrapper.pulse-right {
+      animation: pullRight 1s ease forwards;
+    }
+
+    @keyframes pullRight {
+      0% {
+        transform: translateX(0) rotate(0);
+      }
+
+      25% {
+        transform: translateX(30px) rotate(4deg);
+      }
+
+      50% {
+        transform: translateX(20px) rotate(3deg);
+      }
+
+      75% {
+        transform: translateX(40px) rotate(5deg);
+      }
+
+      100% {
+        transform: translateX(0) rotate(0);
+      }
+    }
+
+    .faq {
+      padding: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+
+      .title {
+        text-transform: uppercase;
+        z-index: 5;
+        top: 150px;
+        left: 400px;
+        line-height: 0.75em;
+        letter-spacing: -5px;
+        font-size: 7.5rem;
+        font-family: 'FuturaLT', sans-serif;
+        color: rgb(0, 0, 0);
+        text-align: center;
+        font-weight: 300;
+        margin: 0px;
+      }
+
+      .subheadline {
+        width: 45%;
+        text-align: center;
+        font-size: 2rem;
+        font-family: 'Inter', sans-serif;
+        margin-bottom: 2rem;
+        color: rgb(0, 0, 0);
+        top: 440px;
+        left: 420px;
+      }
+    }
+
+
+    .faq-item {
+      background-color: #FFFFFF;
+      margin-bottom: 10px;
+      width: 60%;
+      border-radius: 20px;
+    }
+
+    .faq-toggle {
+      display: none;
+    }
+
+    .faq-question {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      cursor: pointer;
+      transition: background-color 0.3s ease-in-out;
+    }
+
+    .faq-question:hover {
+      background-color: #F0F0F0;
+    }
+
+    .question-text {
+      font-size: 2rem;
+      font-family: 'Inter', sans-serif;
+      color: rgb(0, 0, 0);
+      top: 440px;
+      left: 420px;
+      font-weight: bold;
+    }
+
+    .chevron-wrapper {
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .chevron {
+      display: block;
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 10px solid #000000;
+      transition: transform 0.3s ease-in-out;
+    }
+
+    .faq-question:hover .chevron {
+      transform: scale(1.2);
+    }
+
+    .faq-item .faq-toggle:checked~.faq-question .chevron-wrapper {
+      transform: rotate(180deg);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      padding: 0 20px;
+      transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+    }
+
+    .faq-item .faq-toggle:checked~.faq-answer {
+      max-height: 1000px;
+      padding: 20px;
+    }
+
+    .faq-answer p {
+      font-size: 1.4rem;
+      font-family: 'Inter', sans-serif;
+      color: rgb(0, 0, 0);
+    }
+
+    @media (max-width: 600px) {
+      .faq-section {
+        padding: 20px;
+      }
+
+      .faq-question {
+        padding: 15px;
+      }
+
+      .question-text {
+        font-size: 16px;
+      }
+
+      .faq-answer {
+        padding: 15px;
+      }
+
+      .faq-answer p {
+        font-size: 14px;
+      }
+
+      .chevron {
+        border-left-width: 8px;
+        border-right-width: 8px;
+        border-top-width: 8px;
+      }
+    }
+
+    .footer-container {
+      font-size: 2rem;
+      font-family: 'Inter', sans-serif;
+      background-color: #000;
+      color: #fff;
+      padding: 100px;
+      padding-left: 200px;
+      padding-right: 200px;
+      display: flex;
+      justify-content: space-between;
+      justify-content: center;
+      font-size: 14px;
+
+    }
+
+    .company-info {
+      flex: 1;
+      margin: 0 10px;
+    }
+
+    .company-info img {
+      max-width: 200px;
+      margin-bottom: 10px;
+    }
+
+    .company-info .description,
+    .company-info .phone,
+    .company-info address {
+      margin-bottom: 10px;
+    }
+
+    .company-info .social-icons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .company-info .social-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .company-info .linkedin::before {
+      content: url('https://upload.wikimedia.org/wikipedia/commons/c/c9/Linkedin_icon.svg');
+      width: 20px;
+      height: 20px;
+    }
+
+    .company-links {
+      flex: 1;
+      margin: 0 10px;
+    }
+
+    .company-links h3 {
+      color: #fff;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .company-links ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .company-links li {
+      margin-bottom: 10px;
+    }
+
+    .company-links a {
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .services-links {
+      flex: 1;
+      margin: 0 10px;
+    }
+
+    .services-links h3 {
+      color: #fff;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .services-links ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .services-links li {
+      margin-bottom: 10px;
+    }
+
+    .services-links a {
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .services-links .plus-icon {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #ccc;
+      margin-left: 5px;
+      position: relative;
+    }
+
+    .services-links .plus-icon::before {
+      content: '+';
+      color: #fff;
+      font-size: 8px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      backdrop-filter: blur(10px);
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+
+    .popup-content {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 30px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      max-width: 600px;
+      font-size: 2rem;
+      font-family: 'Inter', sans-serif;
+      color: rgb(0, 0, 0);
+
+      font-weight: bold;
+    }
+
+    .popup-content button {
+      margin-top: 20px;
+      background: #000;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 12px;
+      cursor: pointer;
+      letter-spacing: -0px;
+      font-size: 3rem;
+      font-family: 'FuturaLT', sans-serif;
+      color: rgb(255, 255, 255);
+      text-align: center;
+      font-weight: 300;
+    }
+
+    #mobile-warning {
+      display: none;
+      position: fixed;
+      z-index: 999999;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 100vw;
+      background-color: #000000;
+      /* Bold red */
+      color: white;
+      font-family: 'Inter', sans-serif;
+      text-align: center;
+      padding: 40px 20px;
+      box-sizing: border-box;
+    }
+
+    #mobile-warning img {
+      max-width: 150px;
+      margin-bottom: 30px;
+    }
+
+    #mobile-warning h1 {
+      text-transform: uppercase;
+      letter-spacing: -1px;
+      font-size: 4rem;
+      font-family: 'FuturaLT', sans-serif;
+      color: rgb(255, 255, 255);
+      text-align: center;
+      font-weight: 300;
+      line-height: 0.8em;
+      margin-bottom: 10px;
+    }
+
+    #mobile-warning p {
+      font-size: 16px;
+      line-height: 1.6;
+      max-width: 400px;
+      margin: 0 auto;
+      font-size: 1.5rem;
+      font-family: 'Inter', sans-serif;
+
+    }
+
+    @media screen and (max-width: 1800px) {
+      body>*:not(#mobile-warning) {
+        display: none !important;
+      }
+
+      #mobile-warning {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <img src="./logo.png" alt="Logo" class="center-logo" />
+  <section class="hero">
+    <nav class="navbar">
+      <a href="tel:+1888303850" class="phone">
+        <i class="fas fa-phone-alt"></i>
+        +40-748-338-544
+      </a>
+      <div class="logo">
+        <img src="./logo.png" alt="Logo">
+      </div>
+      <div class="menu" id="menu-toggle">
+        <i class="fas fa-bars"></i>
+      </div>
+    </nav>
+    <div class="menu-overlay" id="menu-overlay">
+      <ul class="menu-list">
+        <li>AGENCY</li>
+        <li>COURSES</li>
+        <li>SEO</li>
+        <li>CRO</li>
+        <li>GOOGLE ADS</li>
+        <li>LANDING PAGES</li>
+        <li>FACEBOOK ADS</li>
+        <li>ABOUT US</li>
+        <li>CAREERS</li>
+      </ul>
+    </div>
+    <div class="light-beam"></div>
+    <div class="icons-container">
 
-  <article id="wrap">
-    <article id="lightings">
-      <section id="one">
-        <section id="two">
-          <section id="three">
-            <section id="four">
-              <section id="five">
-              </section>
-            </section>
-          </section>
-        </section>
-      </section>
-    </article>
-  </article>
+      <h1>WE SET THE <span class="">FIRE</span> UNDER<br>YOUR BUSINESS A$$</h1>
+      <p>You’re not crazy. This is overwhelming. But we make it easy.<br>It’s like therapy for your business.. but
+        with
+        illegally high ROI and clarity.</p>
+      <div class="email-input-container">
+        <img src="crowley.png" style="height: 50px;">
+        <input type="email" placeholder="  Enter your email, we'll send you something you’ll wish you saw sooner." />
+        <div class="button-wrapper">
+          <button class="gold-button">Gimme!</button>
+          <span class="shine-png"></span>
+        </div>
 
-  <!-- Footer -->
-  <footer class="footer-message">
-    <p>R'NQ™ — All rights reserved.</p>
-    <p>The project is in development, we are ready soon.</p>
+      </div>
+
+      <!-- Icons closer to center/top = smaller, sharper -->
+      <img src="./knottrax.png" class="icon"
+        style="--top: 15%; --left: 47%; --size: 35px; --blur: 0px; --opacity: 0.95; --scale: 1; --z: 80px;">
+
+      <img src="./rnq.png" class="icon"
+        style="--top: 20%; --left: 35%; --size: 40px; --blur: 1px; --opacity: 0.95; --scale: 1.2; --z: 40px;">
+
+      <img src="./instagram.png" class="icon"
+        style="--top: 25%; --left: 60%; --size: 44px; --blur: 1.5px; --opacity: 0.95; --scale: 1.3; --z: 30px;">
+
+      <img src="./analytics.png" class="icon"
+        style="--top: 40%; --left: 15%; --size: 60px; --blur: 3px; --opacity: 0.95; --scale: 1.5; --z: 0px;">
+
+      <img src="./facebook.png" class="icon"
+        style="--top: 50%; --left: 80%; --size: 70px; --blur: 2px; --opacity: 0.95; --scale: 1.7; --z: -20px;">
+
+      <img src="./googleads.png" class="icon"
+        style="--top: 80%; --left: 50%; --size: 90px; --blur: 1.5px; --opacity: 0.95; --scale: 1.7; --z: -20px;">
+    </div>
+
+  </section>
+  <section class="story-section">
+    <div class="notebook-wrapper">
+      <div class="notebook-paper">
+        <div class="tape tape-top-right"></div>
+        <div class="notebook-lines">
+          <div class="story-div">
+            <p>Dear founder,</p>
+            <p>Growing a business used to sound fun. Now it feels like a 24/7 anxiety hobby.</p>
+            <p>Your brain? Full of question marks.</p>
+            <p>Your calendar? Full of chaos.</p>
+            <p>Your sleep? A distant memory, like pre-COVID pants.</p>
+            <p>One minute you're Googling “how to run Facebook ads”.</p>
+            <p>The next, you're watching a 19-year-old on YouTube sell $100K courses using a chatbot and a vision board.
+            </p>
+            <p>Everyone’s yelling at you to:</p>
+            <p>😖 Build a funnel</p>
+            <p>😭 Start a podcast</p>
+            <p>😴 Dance on Instagram</p>
+            <p>🤥 Write LinkedIn essays about “authenticity”</p>
+            <p>🤬 Do a 47-step cold outreach sequence you’ll never finish</p>
+            <p><em>“Maybe if I just post more… something will click.”</em></p>
+            <p>Welcome to the founder’s paradox: too many options, not enough traction.</p>
+            <p>So you do a little of this, a little of that… and wonder why your growth graph looks like a sad noodle.
+            </p>
+            <p>We call it the <span class="bold-story">DIY Hustle Matrix™</span>.</p>
+            <p>Where dreams go to get tangled up in browser tabs and Canva templates.</p>
+            <p>But here's what most people forget:</p>
+            <p>You didn’t start this business to juggle tactics and panic-scroll Reddit at 2am.</p>
+            <p>You started it for more.</p>
+            <p>More security.</p>
+            <p>More money.</p>
+            <p><strong>More freedom.</strong></p>
+            <p>More space to breathe.</p>
+            <p><u>More mornings with your kids.</u></p>
+            <p>More spontaneous flights with your partner to places where time slows down.</p>
+            <p>More headspace to think, dream, and actually live again.</p>
+            <p>If any part of that vision made your shoulders drop, even just for a second…</p>
+            <p>You might want to brace yourself.</p>
+            <p>Because what comes next?</p>
+            <p>Well...</p>
+            <p>Let’s just say it’s the kind of thing that makes grown founders cry tears of relief into their overpriced
+              flat whites.</p>
+            <p>It’s something to pull you out of the <span class="bold-story">DIY Hustle Matrix™</span>... and
+              into the version of your business that actually works.</p>
+            <p><strong>And that thing starts here.</strong></p>
+            <p><strong>*cue strategic angels singing*</strong></p>
+            <div id="playButton" class="button play-icon"></div>
+          </div>
+        </div>
+        <div class="tape tape-bottom-left"></div>
+        <div class="notebook-hole hole-top"></div>
+        <div class="notebook-hole hole-middle"></div>
+        <div class="notebook-hole hole-bottom"></div>
+      </div>
+    </div>
+
+
+
+  </section>
+
+  <section class="solution">
+    <img src="gold2.png" style="height: 200px;">
+    <h1>THE SOUND OF YOUR DREAMS<br>GETTING SERIOUS</h1>
+    <p>Take the golden ticket, and you’ll walk away with clarity, an unfairly solid plan, and a strange sense of
+      invincibilty. We know. Weird.</p>
+    <div class="button-wrapper2">
+      <a href="https://calendly.com/rnq/30min"><button class="gold-button2">CLAIM YOUR FREE 30-MINUTE STRATEGY
+          SESSION<br><span class="subbutton">Be quick! Free
+            spots are almost gone for July</span></button></a>
+      <span class="shine-png"></span>
+    </div>
+    <p style="font-size: 1.3em; color: #979797;">PS: Your future self will nod in approval while your bank account will
+      finally breathe.</p>
+  </section>
+  <section class="trust" style="background-color: #ffe9e9;">
+    <img src="stamp.png" style="height: 250px;">
+    <h1 class="title">Proven. Predictable.<br>Profitable.</h1>
+    <p class="subheadline">You’re trying to grow a real business using Reddit hacks, YouTube funnels, and whatever your
+      last podcast guest
+      screamed about. That’s not strategy, that’s duct tape in disguise. Instead, simplify. Build systems that work even
+      when you’re offline. Structure beats hustle. Clarity beats chaos.</p>
+
+
+    <div class="card-row">
+      <div class="card-item">
+        <p class="percent-value">+243%</p>
+        <p class="card-text">more people wants to buy your service/product in less than 30 days</p>
+      </div>
+      <div class="card-item">
+        <p class="percent-value">-68%</p>
+        <p class="card-text">less money spend, same (or better) results, your wallet says thanks</p>
+      </div>
+      <div class="card-item">
+        <p class="percent-value">X3</p>
+        <p class="card-text">more strangers become buyers</p>
+      </div>
+    </div>
+
+    <p class="subheadline" style="color: grey;">Metrics So Sexy We Almost Put Them on OnlyFans.</p>
+
+
+    <div class="slider">
+      <div class="slide-track">
+        <div class="slide">
+          <img src="brand1.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand2.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand3.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand4.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand5.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand6.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand7.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand1.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand2.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand3.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand4.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand5.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand6.png" height="100" width="250" alt="" />
+        </div>
+        <div class="slide">
+          <img src="brand7.png" height="100" width="250" alt="" />
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="trust">
+    <img src="witch.png" style="height: 250px;">
+    <h1 class="title">SAY "NO" TO<br>Voodoo Marketing</h1>
+    <p class="subheadline">You’ve tried being the content team, the strategist, the media buyer, the copywriter, the
+      closer, and the janitor... all before lunch.
+      <br><br>
+      You keep telling yourself you’ll figure it out. But deep down, you're exhausted.
+      Not because you're not good enough.
+      Because no one builds empires alone…
+    <div class="button-wrapper2" style="margin-top: 30px;">
+      <a href="https://calendly.com/rnq/30min"><button class="gold-button2">CLAIM YOUR FREE 30-MINUTE STRATEGY
+          SESSION<br><span class="subbutton">Be quick! Free
+            spots are almost gone for July</span></button></a>
+      <span class="shine-png"></span>
+    </div>
+  </section>
+  <section class="trust" style="background-color: #ececec;">
+    <img src="sherlock.png" style="height: 200px; margin-bottom: 40px;">
+    <h1 class="title">FORGET SHERLOCK<br>CHECK THIS
+    </h1>
+    <div class="sherlock-wrapper" style="display: flex; justify-content: center; margin: 40px 0;">
+      <div class="sherlock-div"
+        style="display: flex; flex-direction: row; max-width: 1400px; width: 100%; align-items: center; gap: 60px;">
+
+        <img src="alltech.png" style="width: 100%; max-width: 700px; object-fit: contain;" />
+
+        <div style="flex: 1; width: 100%; max-width: 750px;">
+
+          <p class="subheadline" style="text-align: left; margin: 0; width: 100%;">
+            We literally built the #1 tracking system on the planet (fight us). It’s called <strong>Knottrax</strong>,
+            and
+            it’s the reason we know your audience better than they know themselves.<br><br>
+            Like, weirdly well. Every scroll, hover,
+            hesitation... mapped.<br><br>
+            We even know when they need a snack. (Okay not really. But almost.)<br><br>
+            No guesswork.<br><br>
+            You got our secret now... this is how we make ROI look illegal.<br><br>
+            Are you going to do anything about it...?
+          </p>
+        </div>
+
+      </div>
+    </div>
+    <div class="button-wrapper2" style="margin-top: 30px;">
+      <a href="https://calendly.com/rnq/30min"><button class="gold-button2">REPORT US TO THE POLICE!<br><span
+            class="subbutton">Be quick! Free
+            spots are almost gone for July</span></button></a>
+      <span class="shine-png"></span>
+    </div>
+
+  </section>
+
+  <section class="tinder">
+    <img src="love.png" style="height: 200px;">
+    <h1 class="title">CROWLEY WANTED<br>TO ASK YOU...<br></h1>
+    <p class="subheadline" style="text-align: left; width: 40%;">Look, we've been through a lot together
+      already.<br><br>
+      You've laughed (probably), you've nodded (hopefully), and deep down... you felt something shift.<br><br>
+      Crowley did too.<br>
+      He says the vibe is giving long-term.<br><br>
+      So let’s not overthink it.<br>
+      You, us..<br><br>
+      Do you think we can be a match..?
+  </section>
+  <section class="test"
+    style="display:flex; flex-direction: column; justify-content: center; align-items: center; background-color: #2b2b2b;">
+    <div class="ultimate-cta">
+      <!-- Outer glows -->
+      <div class="glow glow-red" id="glowRed"></div>
+      <div class="glow glow-green" id="glowGreen"></div>
+
+      <div class="tinder-wrapper" id="tinderCard">
+        <div class="overlay"></div>
+        <div class="card-content">
+          <h1 class="name">Jey Crowley</h1>
+          <h2 class="h2-tinder">Interested in:</h2>
+          <p class="p-tinder">Sexy business owners</p>
+          <p class="p-tinder bold-yellow">Tryna build something real,<br>not situationships.</p>
+          <div class="hobies">
+            <div class="hobbie">
+              <img src="https://img.icons8.com/emoji/48/000000/pisces-emoji.png" alt="Pisces" />
+              Pieces
+            </div>
+            <div class="hobbie">
+              <img src="https://img.icons8.com/emoji/48/000000/soccer-ball-emoji.png" alt="Grinding" />
+              Grinding hard
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h1 class="call" style="margin-bottom: 100px;">Swipe right if you got CEO energy ➔</h1>
+    </div>
+  </section>
+
+  <section class="faq" style="background-color: #ececec;">
+    <h1 class="title" style="margin-top: 70px;">What Everyone’s Thinking<br>(But Afraid to Ask)</h1>
+
+    <div class="faq-item" style="margin-top: 70px;">
+      <input type="checkbox" id="faq1" class="faq-toggle">
+      <label for="faq1" class="faq-question">
+        <span class="question-text">What does a digital marketing agency actually do?</span>
+        <span class="chevron-wrapper"><span class="chevron"></span></span>
+      </label>
+      <div class="faq-answer">
+        <p>Short version? We help you make more money online without sacrificing your sanity.
+          Long version? We design and run ad campaigns, write persuasive copy, build conversion-optimized funnels, and
+          track the living hell out of everything. That way, we know what’s working and what’s wasting your money.
+          Think of us like a growth department you don’t have to manage. Just plug in. Scale up. Exhale.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <input type="checkbox" id="faq2" class="faq-toggle">
+      <label for="faq2" class="faq-question">
+        <span class="question-text">How do I know that I will get a return on my investment?</span>
+        <span class="chevron-wrapper"><span class="chevron"></span></span>
+      </label>
+      <div class="faq-answer">
+        <p>You don’t. Not yet. But you’ll feel the clarity hit on our very first call.
+          We don’t make empty promises, but we do bring battle-tested strategy, ruthless tracking (hi Knottrax 👋), and
+          zero fluff.
+          We obsess over ROI like it’s a religion. If it’s not working, we fix it fast. Or we don’t sleep.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <input type="checkbox" id="faq3" class="faq-toggle">
+      <label for="faq3" class="faq-question">
+        <span class="question-text">Do you work with big or small companies?</span>
+        <span class="chevron-wrapper"><span class="chevron"></span></span>
+      </label>
+      <div class="faq-answer">
+        <p>We work with <em>growth-minded</em> companies. Whether you’re making $5K per month or $500K per month, if
+          your offer’s legit and you’re ready to scale, we’re in.
+          Startups, bootstrapped killers, lean teams, DTC brands, personal brands, we’ve helped them all punch above
+          their weight.</p>
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <input type="checkbox" id="faq4" class="faq-toggle">
+      <label for="faq4" class="faq-question">
+        <span class="question-text">Why is R'NQ different from other agencies?</span>
+        <span class="chevron-wrapper"><span class="chevron"></span></span>
+      </label>
+      <div class="faq-answer">
+        <p>We don’t do cookie-cutter. We don’t ghost you after onboarding. And we don’t run ads just to hit KPIs that
+          don’t pay your bills.
+          We built our own tracking tech. We craft strategy like mad scientists. And we care about your business like
+          it’s ours. If you win, we win harder.
+          *Oh, and we’re actually fun to work with.* Go figure.</p>
+      </div>
+    </div>
+  </section>
+
+
+  <footer class="footer-container">
+    <div class="company-info">
+      <img src="logo.png" alt="Company Logo">
+      <p class="description">Because guesswork isn’t a growth plan.</p>
+      <address>
+        Cluj-Napoca<br>
+        Cluj, CJ 400609 <br>
+        Romania
+      </address>
+      <p class="phone">Phone: +40-748-338-544</p>
+    </div>
+    <!-- <div class="company-links">
+      <h3>Company</h3>
+      <ul>
+        <li><a href="#">About Us</a></li>
+        <li><a href="#">Contact Us</a></li>
+        <li><a href="#">Blog</a></li>
+        <li><a href="#">Reviews</a></li>
+        <li><a href="#">Careers</a></li>
+        <li><a href="#">Case Studies</a></li>
+      </ul>
+    </div> -->
+    <div class="services-links">
+      <h3>Services</h3>
+      <ul>
+        <li><a href="#">SEO</a><span class="plus-icon"></span></li>
+        <li><a href="#">Conversion Rate Optimization</a></li>
+        <li><a href="#">Google Ads</a><span class="plus-icon"></span></li>
+        <li><a href="#">Facebook Ads</a><span class="plus-icon"></span></li>
+        <li><a href="#">Landing Pages</a></li>
+        <li><a href="#">Web Design</a></li>
+      </ul>
+    </div>
   </footer>
 
-  <!-- Audio element -->
-  <audio id="mySound" src="./space.mp3" loop muted></audio>
+  <div
+    style="width: 100%; background-color: #ff0048; padding: 20px 0px; text-align: center; font-size: 18px; color: #ffffff; font-family: 'Inter', sans-serif;">
+    <p style="margin: 0;">
+      © R'NQ. All rights <em>deserved</em>.<br>
+      This site’s technically under construction, but don’t worry, the marketing weapons are already locked and
+      loaded.<br>
+      New brand, same dangerous operators behind the curtain. You’re in good, slightly unhinged hands.
+    </p>
+  </div>
+  <div id="rejectionPopup" style="display:none;" class="popup">
+    <div class="popup-content">
+      <p>Well.. this was unexpected to be honest. Do you have anything to say about this?</p>
+      <button onclick="closePopup()">My bad, I wanted to slide right.</button>
+    </div>
+  </div>
+  <div id="mobile-warning">
+    <img src="logo.png" alt="R'NQ Logo">
+    <h1>Almost Ready<br>for You</h1>
+    <p>
+      The R'NQ experience isn't available on mobile or tablet just yet, but don’t worry, the dev elves are on
+      it.<br><br>
+      For now, grab a laptop or desktop to explore the full power of our chaotic genius.
+    </p>
+  </div>
+
+
+
+  <!-- 
+  <section class="launch-section" id="launchSection">
+    <img src="rocket.png" class="launch-rocket" id="rocket1" />
+    <img src="rocket.png" class="launch-rocket" id="rocket2" />
+    <img src="rocket.png" class="launch-rocket" id="rocket3" />
+
+    <svg class="launch-svg" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+      <path id="path1" class="launch-path" d="M 500 1000 C 400 800, 300 600, 200 200" />
+      <path id="path2" class="launch-path" d="M 500 1000 C 500 800, 500 600, 500 200" />
+      <path id="path3" class="launch-path" d="M 500 1000 C 600 800, 700 600, 800 200" />
+    </svg>
+  </section>
+
+
 
   <script>
-    // Wait for window to load, then set up audio play
-    window.onload = function() {
-      const audio = document.getElementById('mySound');
-      
-      // Play the sound (initially muted)
-      audio.play().catch(error => {
-        console.error("Playback failed:", error);
-      });
+    const section = document.getElementById("launchSection");
+    const rockets = [
+      { el: document.getElementById("rocket1"), pathId: "path1" },
+      { el: document.getElementById("rocket2"), pathId: "path2" },
+      { el: document.getElementById("rocket3"), pathId: "path3" }
+    ];
 
-      // Unmute the sound after a short delay to ensure autoplay works
+    window.addEventListener("scroll", () => {
+      const sectionTop = section.offsetTop;
+      const sectionHeight = section.offsetHeight;
+      const scrollY = window.scrollY + window.innerHeight;
+      const sectionScroll = (scrollY - sectionTop) / sectionHeight;
+
+      rockets.forEach(({ el, pathId }) => {
+        const path = document.getElementById(pathId);
+        const pathLength = path.getTotalLength();
+
+        // Only show rockets while section is in view
+        if (sectionScroll >= 0 && sectionScroll <= 1) {
+          const pathProgress = sectionScroll; // 0 at start, 1 at end
+          const point = path.getPointAtLength(pathLength * pathProgress);
+
+          const delta = 2;
+          const ahead = path.getPointAtLength(Math.min(pathLength, pathLength * pathProgress + delta));
+          const angle = Math.atan2(ahead.y - point.y, ahead.x - point.x) * 180 / Math.PI;
+
+          // Translate SVG point to section coordinate system
+          const svg = path.ownerSVGElement.getBoundingClientRect();
+          const sectionBox = section.getBoundingClientRect();
+
+          const x = svg.left + point.x - sectionBox.left;
+          const y = svg.top + point.y - sectionBox.top;
+
+          el.style.left = `${x - 20}px`;
+          el.style.top = `${y - 20}px`;
+          el.style.transform = `rotate(${angle}deg)`;
+          el.style.opacity = 1;
+        } else {
+          el.style.opacity = 0;
+        }
+      });
+    });
+  </script> -->
+  <script>
+    const card = document.getElementById('tinderCard');
+    const glowRed = document.getElementById('glowRed');
+    const glowGreen = document.getElementById('glowGreen');
+    const popup = document.getElementById('rejectionPopup');
+
+    let isDragging = false;
+    let startX = 0;
+    let offsetX = 0;
+    let pulseTimeout = null;
+
+    function startAutoPulse() {
+      pulseTimeout = setInterval(() => {
+        if (!isDragging) {
+          card.classList.add('pulse-right');
+          glowGreen.style.opacity = '1';
+          setTimeout(() => {
+            card.classList.remove('pulse-right');
+            glowGreen.style.opacity = '0.4';
+          }, 1000);
+        }
+      }, 3000);
+    }
+
+    function applyGlow(x) {
+      const maxDist = 150;
+      const normalized = Math.max(-1, Math.min(1, x / maxDist));
+      if (normalized > 0) {
+        glowGreen.style.opacity = 0.4 + normalized * 3;
+        glowRed.style.opacity = 0;
+      } else if (normalized < 0) {
+        glowRed.style.opacity = 0.4 + (-normalized * 3);
+        glowGreen.style.opacity = 0;
+      } else {
+        glowRed.style.opacity = 0.4;
+        glowGreen.style.opacity = 0.4;
+      }
+    }
+
+    function closePopup() {
+      popup.style.display = 'none';
+    }
+
+    card.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      startX = e.clientX - offsetX;
+      clearInterval(pulseTimeout);
+      card.style.transition = 'none';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      offsetX = e.clientX - startX;
+      const rotate = offsetX / 15;
+      card.style.transform = `translateX(${offsetX}px) rotate(${rotate}deg)`;
+      applyGlow(offsetX);
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (!isDragging) return;
+      isDragging = false;
+
+      // Threshold for swipe
+      const threshold = 100;
+
+      if (offsetX > threshold) {
+        // SWIPE RIGHT → GO TO LINK
+        window.location.href = 'https://calendly.com/rnq/30min'; // Change to your URL
+      } else if (offsetX < -threshold) {
+        // SWIPE LEFT → SHOW POPUP
+        popup.style.display = 'flex';
+      }
+
+      // Reset card
+      offsetX = 0;
+      card.style.transition = 'transform 0.3s ease';
+      card.style.transform = 'translateX(0) rotate(0)';
+      glowRed.style.opacity = '0.4';
+      glowGreen.style.opacity = '0.4';
+
       setTimeout(() => {
-        audio.muted = false;
-      }, 200);  // Delay in milliseconds
-    };
+        card.style.transition = '';
+        startAutoPulse();
+      }, 300);
+    });
+
+    startAutoPulse();
+  </script>
+
+
+
+  </script>
+  <script>
+    const button = document.getElementById('playButton');
+    const audio = new Audio('angel.mp3');
+    audio.loop = false; // Prevent looping
+    let isPlaying = false;
+
+    button.addEventListener('click', () => {
+      if (isPlaying) {
+        audio.pause();
+        audio.currentTime = 0; // Reset to start when stopping
+        button.classList.remove('stop-icon');
+        button.classList.add('play-icon');
+        isPlaying = false;
+      } else {
+        audio.play().catch(error => console.error('Error playing audio:', error));
+        button.classList.remove('play-icon');
+        button.classList.add('stop-icon');
+        isPlaying = true;
+      }
+    });
+
+    // Reset button to play state when audio ends
+    audio.addEventListener('ended', () => {
+      button.classList.remove('stop-icon');
+      button.classList.add('play-icon');
+      isPlaying = false;
+    });
+  </script>
+  <script>
+    const menuToggle = document.getElementById('menu-toggle');
+    const menuOverlay = document.getElementById('menu-overlay');
+    const menuIcon = menuToggle.querySelector('i');
+
+    menuToggle.addEventListener('click', function () {
+      this.classList.toggle('active');
+      menuOverlay.classList.toggle('active');
+      menuIcon.classList.toggle('fa-bars');
+      menuIcon.classList.toggle('fa-times');
+    });
+
+    document.addEventListener('click', function (event) {
+      if (!menuToggle.contains(event.target) && !menuOverlay.contains(event.target)) {
+        menuToggle.classList.remove('active');
+        menuOverlay.classList.remove('active');
+        menuIcon.classList.remove('fa-times');
+        menuIcon.classList.add('fa-bars');
+      }
+    });
   </script>
 </body>
+
 </html>
