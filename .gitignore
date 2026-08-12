@@ -1,0 +1,8 @@
+node_modules/
+admin/node_modules/
+publish/
+admin/dist/
+.env
+.env.*
+.netlify/
+DEPLOY-SECRETS.txt

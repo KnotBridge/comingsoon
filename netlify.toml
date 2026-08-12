@@ -1,0 +1,46 @@
+# R'NQ site + mail manager. The static marketing site publishes at /, the Vite
+# admin SPA at /admin, and the backend runs as Netlify Functions.
+[build]
+  command = "npm run build"
+  publish = "publish"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Friendly API path -> functions.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Email tracking (open pixel + click redirect) use short paths in the sent mail.
+[[redirects]]
+  from = "/t/o"
+  to = "/.netlify/functions/track-open"
+  status = 200
+[[redirects]]
+  from = "/t/c"
+  to = "/.netlify/functions/track-click"
+  status = 200
+
+# Public unsubscribe page.
+[[redirects]]
+  from = "/unsubscribe"
+  to = "/.netlify/functions/unsubscribe"
+  status = 200
+
+# Admin SPA client-side routing fallback.
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200
+
+# Scheduled workers. Netlify Scheduled Functions replace pg_cron. (Schedules are
+# also declared in-code via `export const config` so manual deploys pick them up.)
+[functions."process-email-queue"]
+  schedule = "* * * * *"
+[functions."process-email-flows"]
+  schedule = "* * * * *"
+[functions."fetch-imap-replies"]
+  schedule = "*/5 * * * *"

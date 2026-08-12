@@ -1,0 +1,22 @@
+{
+  "name": "rnq-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:admin": "cd admin && npm ci && npm run build",
+    "bundle:functions": "node scripts/bundle-functions.mjs",
+    "assemble": "node scripts/assemble.mjs",
+    "//build": "Git-connected Netlify build: build the SPA + assemble static. Netlify bundles netlify/functions itself.",
+    "build": "npm run build:admin && npm run assemble",
+    "//package": "Drag-and-drop build: also bundles functions self-contained into publish/.",
+    "package": "npm run build:admin && npm run bundle:functions && npm run assemble"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.2",
+    "imapflow": "^1.0.164",
+    "nodemailer": "^6.9.16"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2"
+  }
+}
