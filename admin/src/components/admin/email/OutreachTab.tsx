@@ -22,7 +22,6 @@ const NAV: { id: OutreachSubPage; label: string; Icon: React.ComponentType<{ cla
   { id: "flows", label: "Flows", Icon: GitBranch },
   { id: "sentlog", label: "Sent Log", Icon: MailOpen },
   { id: "mailbox", label: "Mailbox", Icon: Mail },
-  { id: "icp", label: "ICP", Icon: Target },
   { id: "performance", label: "Performance", Icon: BarChart3 },
 ];
 
@@ -103,7 +102,6 @@ export default function OutreachTab() {
       ) : (
         <div className="flex-1 min-w-0 p-6 overflow-auto">
           {sub === "contacts" && <ContactsPage audiences={audiences} onCompose={handleCompose} />}
-          {sub === "icp" && <ICPPage />}
           {sub === "performance" && <TemplatePerformancePage />}
           {sub === "templates" && <TemplatesPage />}
           {sub === "sentlog" && <SentLogPage audiences={audiences} onFollowUp={handleFollowUp} />}

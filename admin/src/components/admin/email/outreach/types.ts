@@ -138,18 +138,6 @@ export type OutreachSubPage =
   | "icp"
   | "performance";
 
-// ── Temporary compatibility shims ───────────────────────────────────────────
-// Contacts / Audiences / ContactProfile pages still reference the old
-// influencer columns (platform, followers). These no-ops keep the build green
-// until those views are re-fielded to the business profile. Safe to remove then.
-export const PLATFORM_ICONS: Record<string, { label: string; color: string }> = {};
-export function formatFollowers(_n: number | null | undefined): string {
-  return "—";
-}
-export function detectPlatform(_url: string): string {
-  return "other";
-}
-
 export const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-100 text-blue-700",
   contacted: "bg-yellow-100 text-yellow-700",

@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { OutreachAudience, OutreachContact } from "./types";
 import { mapImportedContact } from "./types";
-import { formatFollowers, PLATFORM_ICONS } from "./types";
 import { Users, Plus, Upload, Search, ChevronRight, Trash2, X, Check, ShieldCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,7 +93,7 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
     return () => { document.removeEventListener("visibilitychange", onVis); window.removeEventListener("focus", onVis); };
   }, [recomputeContacted]);
   const [showManualAdd, setShowManualAdd] = useState(false);
-  const [manualForm, setManualForm] = useState({ name: "", email: "", username: "", followers: "", platform: "other", bio: "" });
+  const [manualForm, setManualForm] = useState({ name: "", email: "", category: "", phone: "", city: "" });
   // Audience deletion asks whether to also delete the contacts in it (cascade) or
   // keep them (just unassign). null = no delete pending.
   const [audienceToDelete, setAudienceToDelete] = useState<OutreachAudience | null>(null);
@@ -242,7 +241,7 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
         if (seen.has(email)) { skipped.push({ row: rowNo, reason: `Duplicate of an earlier row (${email})`, preview }); return; }
         seen.add(email);
 
-        valid.push({ ...c, email, name: (c.name && c.name.trim()) || nameFromEmail(email) || c.username || "Unknown" });
+        valid.push({ ...c, email, name: (c.name && c.name.trim()) || nameFromEmail(email) || "Unknown" });
       });
 
       if (valid.length === 0 && skipped.length === 0) { toast.error("No rows found in file"); return; }
@@ -337,17 +336,16 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
       audience_id: selectedAudience.id,
       name: manualForm.name,
       email: manualForm.email,
-      username: manualForm.username || null,
-      followers: manualForm.followers ? parseInt(manualForm.followers) : null,
-      platform: manualForm.platform as OutreachContact["platform"],
-      bio: manualForm.bio || null,
+      primary_category: manualForm.category || null,
+      phone: manualForm.phone || null,
+      city: manualForm.city || null,
     });
     if (error) {
       toast.error(error.message.includes("unique") ? "Email already exists" : "Failed to add contact");
       return;
     }
     toast.success("Contact added");
-    setManualForm({ name: "", email: "", username: "", followers: "", platform: "other", bio: "" });
+    setManualForm({ name: "", email: "", category: "", phone: "", city: "" });
     setShowManualAdd(false);
     loadContacts(selectedAudience);
     onRefresh();
@@ -357,7 +355,7 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.username || "").toLowerCase().includes(q);
+      return c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || (c.primary_category || "").toLowerCase().includes(q) || (c.city || "").toLowerCase().includes(q);
     }
     return true;
   });
@@ -492,12 +490,9 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
               <div className="border border-border rounded-xl p-4 bg-muted/30 grid grid-cols-2 gap-3">
                 <Input placeholder="Name *" value={manualForm.name} onChange={e => setManualForm(f => ({ ...f, name: e.target.value }))} className="h-8 text-sm" />
                 <Input placeholder="Email *" value={manualForm.email} onChange={e => setManualForm(f => ({ ...f, email: e.target.value }))} className="h-8 text-sm" />
-                <Input placeholder="@username" value={manualForm.username} onChange={e => setManualForm(f => ({ ...f, username: e.target.value }))} className="h-8 text-sm" />
-                <Input placeholder="Followers" type="number" value={manualForm.followers} onChange={e => setManualForm(f => ({ ...f, followers: e.target.value }))} className="h-8 text-sm" />
-                <select value={manualForm.platform} onChange={e => setManualForm(f => ({ ...f, platform: e.target.value }))} className="h-8 text-sm border border-input rounded-md px-2 bg-background">
-                  {Object.entries(PLATFORM_ICONS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                </select>
-                <Input placeholder="Bio snippet" value={manualForm.bio} onChange={e => setManualForm(f => ({ ...f, bio: e.target.value }))} className="h-8 text-sm" />
+                <Input placeholder="Category" value={manualForm.category} onChange={e => setManualForm(f => ({ ...f, category: e.target.value }))} className="h-8 text-sm" />
+                <Input placeholder="Phone" value={manualForm.phone} onChange={e => setManualForm(f => ({ ...f, phone: e.target.value }))} className="h-8 text-sm" />
+                <Input placeholder="City" value={manualForm.city} onChange={e => setManualForm(f => ({ ...f, city: e.target.value }))} className="h-8 text-sm" />
                 <div className="col-span-2 flex gap-2">
                   <Button size="sm" onClick={addManualContact} className="h-7 text-xs">Add contact</Button>
                   <Button size="sm" variant="ghost" onClick={() => setShowManualAdd(false)} className="h-7 text-xs">Cancel</Button>
@@ -522,7 +517,7 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
                     <div key={i} className="flex items-center gap-2 text-muted-foreground">
                       <span className="font-medium text-foreground">{c.name}</span>
                       <span>{c.email}</span>
-                      {c.followers ? <span>{formatFollowers(c.followers)}</span> : null}
+                      {c.primary_category ? <span>{c.primary_category}</span> : null}
                     </div>
                   ))}
                   {importPreview.length > 10 && <p className="text-muted-foreground">+{importPreview.length - 10} more…</p>}
@@ -571,10 +566,10 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
                 <table className="w-full text-sm">
                   <thead className="bg-muted/40 border-b border-border">
                     <tr>
-                      <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Name</th>
+                      <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Business</th>
                       <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Email</th>
-                      <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Platform</th>
-                      <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Followers</th>
+                      <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Category</th>
+                      <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">City</th>
                       <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Status</th>
                     </tr>
                   </thead>
@@ -583,17 +578,10 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
                       <tr key={c.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
                         <td className="px-3 py-2">
                           <p className="font-medium text-foreground text-xs">{c.name}</p>
-                          {c.username && <p className="text-xs text-muted-foreground">@{c.username}</p>}
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{c.email}</td>
-                        <td className="px-3 py-2">
-                          {c.platform && (
-                            <span className="text-xs text-muted-foreground">
-                              {PLATFORM_ICONS[c.platform]?.label}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">{formatFollowers(c.followers)}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{c.primary_category || (Array.isArray(c.categories) ? c.categories[0] : "") || "—"}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{c.city || "—"}</td>
                         <td className="px-3 py-2">
                           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                             <span className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOT[c.status] || "bg-muted-foreground/40")} />

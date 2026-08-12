@@ -1,50 +1,42 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import type { OutreachContact } from "./types";
-import { formatFollowers, PLATFORM_ICONS } from "./types";
-import { X, ExternalLink, Save, Home, Eye, Wand2, Loader2, Building2 } from "lucide-react";
+import { X, ExternalLink, Save, Building2, Globe, MapPin, Phone, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { stageContactProperty, hasListingToStage } from "./stageProperty";
 
-// One shared, sliding contact profile — opened from the Contacts table and from the
-// Mailbox (the hover card / a conversation). Shows the contact, their listing, quick
-// edits, and a one-click "Stage this property" that drops the listing's rooms straight
-// into the current user's workspace (via the same claim path a recipient would use).
+// Shared sliding contact profile — opened from the Contacts table and the Mailbox.
+// Shows the business, quick edits, and quick status changes.
 
 const STATUS_DOT: Record<string, string> = {
   new: "bg-blue-500", contacted: "bg-amber-400", replied: "bg-emerald-500",
-  partner: "bg-violet-500", rejected: "bg-rose-400", unsubscribed: "bg-muted-foreground/40",
+  interested: "bg-violet-500", customer: "bg-emerald-600", rejected: "bg-rose-400", unsubscribed: "bg-muted-foreground/40",
 };
-const STATUSES = ["new", "contacted", "replied", "partner", "rejected", "unsubscribed"] as const;
+const STATUSES = ["new", "contacted", "replied", "interested", "customer", "rejected", "unsubscribed"] as const;
+
+const catOf = (c: OutreachContact | null) => c ? (c.primary_category || (Array.isArray(c.categories) ? c.categories[0] : "") || "") : "";
+const withProto = (u: string) => (/^https?:\/\//.test(u) ? u : `https://${u}`);
 
 interface Props {
   open: boolean;
   onClose: () => void;
   contactId: string | null;
-  /** Fallbacks when the counterparty isn't a saved contact (e.g. from the Mailbox). */
   fallbackEmail?: string;
   fallbackName?: string;
   onUpdated?: (c: OutreachContact) => void;
 }
 
 export default function ContactProfilePanel({ open, onClose, contactId, fallbackEmail, fallbackName, onUpdated }: Props) {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [render, setRender] = useState(open);
   const [slideIn, setSlideIn] = useState(false);
   const [contact, setContact] = useState<OutreachContact | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [staging, setStaging] = useState(false);
-  const [fields, setFields] = useState({ name: "", email: "", username: "", platform: "", followers: "", status: "new", profile_url: "", notes: "", bio: "" });
+  const [fields, setFields] = useState({ name: "", email: "", category: "", phone: "", website: "", city: "", state: "", status: "new", notes: "" });
 
-  // Mount + slide animation.
   useEffect(() => {
     if (open) { setRender(true); const id = requestAnimationFrame(() => setSlideIn(true)); return () => cancelAnimationFrame(id); }
     setSlideIn(false);
@@ -55,9 +47,9 @@ export default function ContactProfilePanel({ open, onClose, contactId, fallback
   const applyContact = useCallback((c: OutreachContact | null) => {
     setContact(c);
     setFields({
-      name: c?.name || fallbackName || "", email: c?.email || fallbackEmail || "", username: c?.username || "",
-      platform: c?.platform || "", followers: c?.followers?.toString() || "", status: c?.status || "new",
-      profile_url: c?.profile_url || "", notes: c?.notes || "", bio: c?.bio || "",
+      name: c?.name || fallbackName || "", email: c?.email || fallbackEmail || "",
+      category: catOf(c), phone: c?.phone || "", website: c?.website_url || "",
+      city: c?.city || "", state: c?.state || "", status: c?.status || "new", notes: c?.notes || "",
     });
   }, [fallbackEmail, fallbackName]);
 
@@ -71,8 +63,6 @@ export default function ContactProfilePanel({ open, onClose, contactId, fallback
         const { data } = await supabase.from("outreach_contacts").select("*").eq("id", contactId).maybeSingle();
         row = (data as OutreachContact) || null;
       }
-      // A message's contact_id can be stale (deleted/re-created); the email may still
-      // map to a live contact, so fall through to it rather than showing "not saved".
       if (!row && fallbackEmail) {
         const { data } = await supabase.from("outreach_contacts").select("*").eq("email", fallbackEmail.toLowerCase()).maybeSingle();
         row = (data as OutreachContact) || null;
@@ -88,11 +78,10 @@ export default function ContactProfilePanel({ open, onClose, contactId, fallback
     if (!contact) return;
     setSaving(true);
     const updates = {
-      name: fields.name, email: fields.email.trim().toLowerCase(), username: fields.username || null,
-      platform: (fields.platform as OutreachContact["platform"]) || null,
-      followers: fields.followers ? parseInt(fields.followers) : null,
-      status: fields.status as OutreachContact["status"],
-      profile_url: fields.profile_url || null, notes: fields.notes || null, bio: fields.bio || null,
+      name: fields.name, email: fields.email.trim().toLowerCase(),
+      primary_category: fields.category || null, phone: fields.phone || null,
+      website_url: fields.website || null, city: fields.city || null, state: fields.state || null,
+      status: fields.status as OutreachContact["status"], notes: fields.notes || null,
     };
     const { error } = await supabase.from("outreach_contacts").update(updates).eq("id", contact.id);
     setSaving(false);
@@ -111,59 +100,16 @@ export default function ContactProfilePanel({ open, onClose, contactId, fallback
     setContact(updated); onUpdated?.(updated);
   };
 
-  const hasListing = hasListingToStage(contact);
-
-  const openDynamicPage = async () => {
-    if (!contact) return;
-    const { data: existing } = await supabase.from("outreach_dynamic_pages")
-      .select("token").eq("contact_id", contact.id).is("campaign_id", null)
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    let token = (existing as { token?: string } | null)?.token;
-    if (!token) {
-      const { data: created, error } = await supabase.from("outreach_dynamic_pages")
-        .insert({ contact_id: contact.id, recipient_email: contact.email, snapshot: listingSnapshot(contact) })
-        .select("token").single();
-      if (error || !created) { toast.error(error?.message || "Could not create preview link"); return; }
-      token = (created as { token: string }).token;
-    }
-    window.open(`/r/${token}`, "_blank", "noopener,noreferrer");
-  };
-
-  // Drop the listing's rooms into the current user's workspace, in the background.
-  const stageProperty = async () => {
-    if (!contact || !user) return;
-    if (!hasListing) { toast.error("This contact has no listing photos to stage"); return; }
-    setStaging(true);
-    try {
-      const roomProjectId = await stageContactProperty(contact);
-      toast.success("Property added to your workspace", {
-        action: { label: "Open", onClick: () => navigate(`/projects?from=re-dynamic&spotlight=${roomProjectId}`) },
-      });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not stage the property");
-    } finally {
-      setStaging(false);
-    }
-  };
-
   if (!render) return null;
   const initial = (fields.name.trim()[0] || fields.email.trim()[0] || "?").toUpperCase();
-  const imgs = contact?.listing_image_urls || [];
 
   return (
     <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
-      <div
-        className={cn("absolute inset-0 bg-black/40 transition-opacity duration-250", slideIn ? "opacity-100" : "opacity-0")}
-        onClick={onClose}
-      />
-      {/* Drawer */}
-      <div
-        className={cn(
-          "absolute right-0 top-0 h-full w-full max-w-[440px] bg-card border-l border-border shadow-2xl flex flex-col transition-transform duration-250 ease-out",
-          slideIn ? "translate-x-0" : "translate-x-full",
-        )}
-      >
+      <div className={cn("absolute inset-0 bg-black/40 transition-opacity duration-250", slideIn ? "opacity-100" : "opacity-0")} onClick={onClose} />
+      <div className={cn(
+        "absolute right-0 top-0 h-full w-full max-w-[440px] bg-card border-l border-border shadow-2xl flex flex-col transition-transform duration-250 ease-out",
+        slideIn ? "translate-x-0" : "translate-x-full",
+      )}>
         {/* Header */}
         <div className="shrink-0 px-5 py-4 border-b border-border flex items-start gap-3">
           <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center text-base font-semibold text-primary flex-shrink-0">
@@ -172,13 +118,15 @@ export default function ContactProfilePanel({ open, onClose, contactId, fallback
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-foreground truncate">{fields.name || fields.email || "Contact"}</p>
             <p className="text-xs text-muted-foreground truncate">{fields.email}</p>
-            <div className="mt-1.5 flex items-center gap-2">
+            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground capitalize">
                 <span className={cn("w-1.5 h-1.5 rounded-full", STATUS_DOT[fields.status] || "bg-muted-foreground/40")} />
                 {fields.status}
               </span>
-              {fields.platform && <span className="text-[11px] text-muted-foreground">· {PLATFORM_ICONS[fields.platform as keyof typeof PLATFORM_ICONS]?.label || fields.platform}</span>}
-              {fields.followers && <span className="text-[11px] text-muted-foreground">· {formatFollowers(Number(fields.followers))}</span>}
+              {fields.category && <span className="text-[11px] text-muted-foreground">· {fields.category}</span>}
+              {contact?.rating != null && (
+                <span className="text-[11px] text-muted-foreground inline-flex items-center gap-0.5">· <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />{contact.rating}{contact.review_count != null ? ` (${contact.review_count})` : ""}</span>
+              )}
             </div>
           </div>
           <button onClick={onClose} className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors flex-shrink-0">
@@ -191,57 +139,24 @@ export default function ContactProfilePanel({ open, onClose, contactId, fallback
           {!loading && !contact && (
             <div className="rounded-xl border border-dashed border-border p-4 text-center">
               <p className="text-sm text-foreground font-medium">Not a saved contact</p>
-              <p className="text-xs text-muted-foreground mt-1">{fields.email || "This person"} isn't in your outreach contacts, so there's no listing to stage.</p>
+              <p className="text-xs text-muted-foreground mt-1">{fields.email || "This person"} isn't in your outreach contacts yet.</p>
             </div>
           )}
 
-          {/* Stage this property — the headline action */}
-          {contact && (
-            <div className={cn("rounded-xl border p-3.5", hasListing ? "border-primary/30 bg-primary/5" : "border-border bg-muted/20")}>
-              <div className="flex items-center gap-2 mb-1">
+          {/* Business info */}
+          {contact && (contact.address || contact.website_url || contact.phone || contact.maps_url) && (
+            <div className="rounded-xl border border-border bg-muted/20 p-3.5 space-y-2">
+              <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-primary" />
-                <p className="text-sm font-semibold text-foreground">{contact.street_address || "Their property"}</p>
+                <p className="text-sm font-semibold text-foreground truncate">{contact.name}</p>
               </div>
-              <p className="text-xs text-muted-foreground mb-3">
-                {hasListing
-                  ? `${imgs.length || "The"} listing photo${imgs.length === 1 ? "" : "s"} ready to stage in your workspace.`
-                  : "No listing photos on this contact yet."}
-              </p>
-              <div className="flex gap-2">
-                <Button size="sm" className="gap-1.5 flex-1" onClick={stageProperty} disabled={!hasListing || staging}>
-                  {staging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-                  {staging ? "Adding…" : "Stage this property"}
-                </Button>
-                <Button size="sm" variant="outline" className="gap-1.5" onClick={openDynamicPage} disabled={!hasListing} title="Open the recipient's dynamic landing page">
-                  <Eye className="w-3.5 h-3.5" /> Page
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Listing details */}
-          {contact && hasListing && (
-            <div className="space-y-2.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Home className="w-3 h-3" /> Listing</p>
-              {imgs.length > 0 && (
-                <div className="grid grid-cols-3 gap-1.5">
-                  {imgs.slice(0, 6).map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noreferrer" className="aspect-square rounded-lg overflow-hidden bg-muted block hover:opacity-90 transition-opacity">
-                      <img src={url} alt={`listing ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
-                    </a>
-                  ))}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-                {contact.street_address && <Detail className="col-span-2" label="Address" value={`${contact.street_address}${contact.city ? `, ${contact.city}` : ""}${contact.property_state ? `, ${contact.property_state}` : ""} ${contact.property_zip || ""}`} />}
-                {contact.listing_amount != null && <Detail label="Price" value={`$${contact.listing_amount.toLocaleString()}`} />}
-                {contact.property_bedrooms != null && <Detail label="Beds" value={String(contact.property_bedrooms)} />}
-                {contact.property_bathrooms != null && <Detail label="Baths" value={String(contact.property_bathrooms)} />}
-                {contact.property_square_feet != null && <Detail label="Sq ft" value={contact.property_square_feet.toLocaleString()} />}
-                {contact.property_year_built != null && <Detail label="Built" value={String(contact.property_year_built)} />}
-                {contact.days_on_market != null && <Detail label="Days on market" value={String(contact.days_on_market)} />}
-                {contact.property_type && <Detail className="col-span-2" label="Type" value={contact.property_type} />}
-                {contact.agent_name && <Detail className="col-span-2" label="Agent" value={`${contact.agent_name}${contact.agent_phone ? ` · ${contact.agent_phone}` : ""}`} />}
+              <div className="space-y-1.5 text-xs text-muted-foreground">
+                {contact.address && (
+                  <div className="flex gap-1.5"><MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" /><span>{contact.address}{contact.city ? `, ${contact.city}` : ""}{contact.state ? `, ${contact.state}` : ""} {contact.postal_code || ""}</span></div>
+                )}
+                {contact.phone && <div className="flex gap-1.5 items-center"><Phone className="w-3 h-3 flex-shrink-0" /><span>{contact.phone}</span></div>}
+                {contact.website_url && <div className="flex gap-1.5 items-center"><Globe className="w-3 h-3 flex-shrink-0" /><a href={withProto(contact.website_url)} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">{contact.website_url}</a></div>}
+                {contact.maps_url && <a href={contact.maps_url} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-1"><ExternalLink className="w-3 h-3" /> View on Google Maps</a>}
               </div>
             </div>
           )}
@@ -266,26 +181,22 @@ export default function ContactProfilePanel({ open, onClose, contactId, fallback
           {contact && (
             <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Details</p>
-              <div className="grid grid-cols-2 gap-2">
-                <Labeled label="Name"><Input value={fields.name} onChange={(e) => setField("name", e.target.value)} className="h-8 text-xs" /></Labeled>
-                <Labeled label="Username"><Input value={fields.username} onChange={(e) => setField("username", e.target.value)} className="h-8 text-xs" placeholder="@handle" /></Labeled>
-              </div>
+              <Labeled label="Business name"><Input value={fields.name} onChange={(e) => setField("name", e.target.value)} className="h-8 text-xs" /></Labeled>
               <Labeled label="Email"><Input value={fields.email} onChange={(e) => setField("email", e.target.value)} className="h-8 text-xs" type="email" /></Labeled>
               <div className="grid grid-cols-2 gap-2">
-                <Labeled label="Platform">
-                  <select value={fields.platform} onChange={(e) => setField("platform", e.target.value)} className="w-full h-8 text-xs border border-input rounded-md px-2 bg-background">
-                    <option value="">None</option>
-                    {(["instagram", "tiktok", "youtube", "twitter", "other"] as const).map((p) => <option key={p} value={p}>{PLATFORM_ICONS[p]?.label || p}</option>)}
-                  </select>
-                </Labeled>
-                <Labeled label="Followers"><Input value={fields.followers} onChange={(e) => setField("followers", e.target.value)} className="h-8 text-xs" type="number" /></Labeled>
+                <Labeled label="Category"><Input value={fields.category} onChange={(e) => setField("category", e.target.value)} className="h-8 text-xs" placeholder="Medical spa" /></Labeled>
+                <Labeled label="Phone"><Input value={fields.phone} onChange={(e) => setField("phone", e.target.value)} className="h-8 text-xs" placeholder="(555) 555-5555" /></Labeled>
               </div>
-              <Labeled label="Profile URL">
+              <Labeled label="Website">
                 <div className="flex gap-1">
-                  <Input value={fields.profile_url} onChange={(e) => setField("profile_url", e.target.value)} className="h-8 text-xs flex-1" placeholder="https://…" />
-                  {fields.profile_url && <a href={fields.profile_url} target="_blank" rel="noreferrer" className="h-8 w-8 flex items-center justify-center border border-border rounded-md text-muted-foreground hover:text-foreground flex-shrink-0"><ExternalLink className="w-3.5 h-3.5" /></a>}
+                  <Input value={fields.website} onChange={(e) => setField("website", e.target.value)} className="h-8 text-xs flex-1" placeholder="business.com" />
+                  {fields.website && <a href={withProto(fields.website)} target="_blank" rel="noreferrer" className="h-8 w-8 flex items-center justify-center border border-border rounded-md text-muted-foreground hover:text-foreground flex-shrink-0"><ExternalLink className="w-3.5 h-3.5" /></a>}
                 </div>
               </Labeled>
+              <div className="grid grid-cols-2 gap-2">
+                <Labeled label="City"><Input value={fields.city} onChange={(e) => setField("city", e.target.value)} className="h-8 text-xs" placeholder="Austin" /></Labeled>
+                <Labeled label="State"><Input value={fields.state} onChange={(e) => setField("state", e.target.value)} className="h-8 text-xs" placeholder="TX" /></Labeled>
+              </div>
               <Labeled label="Notes"><Textarea value={fields.notes} onChange={(e) => setField("notes", e.target.value)} className="text-xs min-h-[60px] resize-none" placeholder="Private notes…" /></Labeled>
             </div>
           )}
@@ -304,23 +215,6 @@ export default function ContactProfilePanel({ open, onClose, contactId, fallback
   );
 }
 
-function listingSnapshot(c: OutreachContact) {
-  return {
-    email: c.email, street_address: c.street_address, city: c.city, state: c.property_state, zip: c.property_zip,
-    bedrooms: c.property_bedrooms, bathrooms: c.property_bathrooms, square_feet: c.property_square_feet,
-    year_built: c.property_year_built, property_type: c.property_type, listing_amount: c.listing_amount,
-    days_on_market: c.days_on_market, agent_name: c.agent_name, listing_image_urls: c.listing_image_urls,
-  };
-}
-
-function Detail({ label, value, className }: { label: string; value: string; className?: string }) {
-  return (
-    <div className={className}>
-      <span className="text-muted-foreground">{label}: </span>
-      <span className="text-foreground">{value}</span>
-    </div>
-  );
-}
 function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
