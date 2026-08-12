@@ -156,7 +156,8 @@ const WAIT_UNITS = [
   { value: "days", label: "days" },
 ];
 
-const FUNCTIONS_BASE = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1`;
+// Backend runs as Netlify Functions, reached through the /api/* redirect.
+const FUNCTIONS_BASE = "/api";
 
 interface EmailFlowRow {
   id: string;
@@ -944,7 +945,7 @@ function FlowBuilderInner({ domain }: { domain: Domain }) {
       {engineOk === "stale" && (
         <div className="px-4 py-2 bg-red-600 text-white text-xs font-medium flex items-center gap-2 shrink-0">
           <span className="text-sm">⚠</span>
-          <span>The flow engine is out of date, so stats and the personal page links won't work yet. In Lovable, open <b>process-email-flows</b> and click <b>Publish</b>, then refresh this page.</span>
+          <span>The flow engine isn't responding yet. If you just deployed, give it a moment and refresh. Flows still save; they run once the engine is reachable.</span>
         </div>
       )}
       <div className="flex flex-1 min-h-0">

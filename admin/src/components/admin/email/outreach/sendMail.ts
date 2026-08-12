@@ -203,15 +203,11 @@ function substituteOutreachVars(
 // Wrap links through track-click ONLY when click tracking is on (off keeps links clean
 // and human). The open pixel is NOT added here anymore — the send worker adds it, so it
 // works in plain-text mode too.
-function injectOutreachTracking(html: string, queueItemId: string, token: string, trackClicks: boolean): string {
-  if (!trackClicks) return html;
-  let linkIndex = 0;
-  return html.replace(/<a\s+([^>]*?)href=["']([^"']+)["']([^>]*?)>/gi, (m, pre, href, post) => {
-    if (href.startsWith("mailto:") || href.startsWith("tel:") || href.includes("unsubscribe")) return m;
-    const lid = `link_${linkIndex++}`;
-    const trackUrl = `${FB}/track-click?id=${queueItemId}&t=${token}&lid=${encodeURIComponent(lid)}&u=${encodeURIComponent(href)}`;
-    return `<a ${pre}href="${trackUrl}"${post}>`;
-  });
+function injectOutreachTracking(html: string, _queueItemId: string, _token: string, _trackClicks: boolean): string {
+  // No-op: the send worker (process-email-queue Netlify function) injects BOTH
+  // click wrapping and the open pixel at send time, using this site's /t/* routes.
+  // Doing it here too would double-wrap and point at a dead URL.
+  return html;
 }
 
 export interface OutreachCampaignRow {

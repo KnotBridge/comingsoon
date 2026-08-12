@@ -27,10 +27,42 @@ for (const name of readdirSync(root)) {
 }
 console.log(`assemble: copied ${copied} root entries into publish/`);
 
-// Ship the Netlify config + redirects with the dropped folder.
-if (existsSync(join(root, "netlify.toml"))) {
-  copyFileSync(join(root, "netlify.toml"), join(publish, "netlify.toml"));
-}
+// Write a DRAG-DEPLOY netlify.toml with NO build command. This folder is already
+// compiled, so Netlify must just serve it + register the pre-bundled functions.
+// (The repo-root netlify.toml keeps its build command for Git-connected deploys.)
+const dragToml = `# Pre-built drag-and-drop deploy. No build runs; this folder is already compiled.
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+[[redirects]]
+  from = "/t/o"
+  to = "/.netlify/functions/track-open"
+  status = 200
+[[redirects]]
+  from = "/t/c"
+  to = "/.netlify/functions/track-click"
+  status = 200
+[[redirects]]
+  from = "/unsubscribe"
+  to = "/.netlify/functions/unsubscribe"
+  status = 200
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200
+
+[functions."process-email-queue"]
+  schedule = "* * * * *"
+[functions."process-email-flows"]
+  schedule = "* * * * *"
+[functions."fetch-imap-replies"]
+  schedule = "*/5 * * * *"
+`;
+writeFileSync(join(publish, "netlify.toml"), dragToml);
 writeFileSync(
   join(publish, "_redirects"),
   [

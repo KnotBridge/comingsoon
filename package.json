@@ -8,8 +8,8 @@
     "assemble": "node scripts/assemble.mjs",
     "//build": "Git-connected Netlify build: build the SPA + assemble static. Netlify bundles netlify/functions itself.",
     "build": "npm run build:admin && npm run assemble",
-    "//package": "Drag-and-drop build: also bundles functions self-contained into publish/.",
-    "package": "npm run build:admin && npm run bundle:functions && npm run assemble"
+    "//package": "Drag-and-drop build: clean, build SPA, bundle functions self-contained, assemble a no-build publish/ folder to drop on Netlify.",
+    "package": "node scripts/clean.mjs && npm run build:admin && npm run bundle:functions && npm run assemble"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.2",

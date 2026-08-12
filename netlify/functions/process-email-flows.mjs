@@ -24,8 +24,14 @@ export default async (req) => {
   let body = {};
   if (req.method === "POST") body = await req.json().catch(() => ({}));
 
+  // Health check used by the flow builder to confirm the engine is reachable.
+  if (body.action === "ping") return json({ version: "1.0", ok: true });
+
   if (body.action === "enroll" && body.flow_id) {
-    const n = await enroll(sb, body.flow_id, body);
+    const auds = body.audience_ids || (body.audience_id ? [body.audience_id] : []);
+    let n = 0;
+    if (body.contact_ids?.length) n += await enroll(sb, body.flow_id, { contact_ids: body.contact_ids });
+    for (const a of auds) n += await enroll(sb, body.flow_id, { audience_id: a });
     return json({ enrolled: n });
   }
 
