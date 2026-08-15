@@ -19,27 +19,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
-// The backend runs as Netlify Functions, not Supabase Edge Functions. Route every
-// supabase.functions.invoke("name", { body }) call to /api/name so all the ported
-// UI (Send, Test SMTP, Sync replies, ...) works unchanged.
-supabase.functions.invoke = async (name: string, opts: { body?: unknown } = {}) => {
-  try {
-    const res = await fetch(`/api/${name}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: opts.body != null ? JSON.stringify(opts.body) : undefined,
-    });
-    const text = await res.text();
-    let data: unknown = text;
-    try { data = JSON.parse(text); } catch { /* keep as text */ }
-    if (!res.ok) {
-      const message = (data && typeof data === "object" && "error" in data
-        ? String((data as { error: unknown }).error)
-        : text) || `HTTP ${res.status}`;
-      return { data: null, error: { message } } as never;
-    }
-    return { data, error: null } as never;
-  } catch (e) {
-    return { data: null, error: { message: String((e as Error)?.message || e) } } as never;
-  }
-};
+// Backend calls go through invokeFn() in "@/integrations/functions" (which hits
+// Netlify Functions at /api/*), not supabase.functions — supabase.functions is a
+// getter that returns a fresh client each access, so it can't be monkey-patched.

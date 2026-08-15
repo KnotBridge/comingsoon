@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { fetchSenderTargets, type GroupLite, type SenderLite } from "./senderTargets";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFn } from "@/integrations/functions";
 import { toast } from "sonner";
 import { Send, Mail, RefreshCw, X, PenSquare, Loader2, Eye, MousePointerClick, Tag as TagIcon, Plus, SlidersHorizontal, Archive, ArchiveRestore, FileText, User, Inbox, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -523,7 +524,7 @@ export default function MailboxPage() {
   const sync = useCallback(async () => {
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("fetch-imap-replies");
+      const { data, error } = await invokeFn("fetch-imap-replies");
       if (error) throw error;
       toast.success((data as any)?.message || "Synced");
       await load();

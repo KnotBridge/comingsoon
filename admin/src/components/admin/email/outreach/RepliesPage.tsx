@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFn } from "@/integrations/functions";
 import { toast } from "sonner";
 import type { OutreachAudience } from "./types";
 import { MessageSquareReply, X, Send, ChevronDown, ChevronUp, Mail } from "lucide-react";
@@ -208,7 +209,7 @@ export default function RepliesPage({ audiences }: Props) {
 
     if (cErr || !campaign) { toast.error("Failed to create reply campaign"); setSending(false); return; }
 
-    const { error: fnErr } = await supabase.functions.invoke("send-outreach", {
+    const { error: fnErr } = await invokeFn("send-outreach", {
       body: { outreach_campaign_id: campaign.id },
     });
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFn } from "@/integrations/functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -442,7 +443,7 @@ export default function SendersTab() {
     setTesting(true);
     setTestResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke("test-smtp-sender", {
+      const { data, error } = await invokeFn("test-smtp-sender", {
         body: {
           smtp_host: form.smtp_host,
           smtp_port: form.smtp_port,

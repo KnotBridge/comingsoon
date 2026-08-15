@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { invokeFn } from "@/integrations/functions";
 
 // Send an email straight through the existing, deployed worker (process-email-queue):
 // insert a queue row (admins are allowed by RLS) with tracking baked in, then kick the
@@ -88,7 +89,7 @@ export async function queueAndSend(
   if (error) throw new Error(error.message);
 
   // Kick the worker so it sends within seconds instead of waiting for the cron.
-  supabase.functions.invoke("process-email-queue", { body: {} }).catch(() => { /* cron will catch it */ });
+  invokeFn("process-email-queue", { body: {} }).catch(() => { /* cron will catch it */ });
   return queueId;
 }
 
@@ -498,7 +499,7 @@ export async function queueOutreachCampaign(campaign: OutreachCampaignRow): Prom
   }
 
   // Kick the worker so the first batch goes out now; cron drains the rest.
-  supabase.functions.invoke("process-email-queue", { body: {} }).catch(() => { /* cron will catch it */ });
+  invokeFn("process-email-queue", { body: {} }).catch(() => { /* cron will catch it */ });
 
   // Mark the campaign as sending and stamp the recipients as contacted.
   await supabase.from("outreach_campaigns")
