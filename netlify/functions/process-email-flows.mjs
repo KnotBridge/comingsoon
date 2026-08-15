@@ -148,6 +148,14 @@ async function evalCondition(sb, enr, node, lastQueueId) {
 }
 
 async function queueEmail(sb, enr, node, senderId) {
+  // Idempotency guard: never queue the same flow node twice for the same contact.
+  // This makes the engine safe against re-runs and stops any duplicate-send storm.
+  if (enr.contact_id && node.id) {
+    const { data: dup } = await sb.from("email_queue").select("id")
+      .eq("flow_id", enr.flow_id).eq("flow_node_id", node.id)
+      .eq("outreach_contact_id", enr.contact_id).limit(1).maybeSingle();
+    if (dup) return dup.id;
+  }
   let subject = node.config?.subject || "";
   let bodyHtml = node.config?.body_html || node.config?.bodyHtml || "";
   const templateId = node.config?.templateId;
@@ -175,7 +183,12 @@ async function queueEmail(sb, enr, node, senderId) {
   }).select("id").single();
   if (error) { console.error("queueEmail", error.message); return null; }
 
-  await sb.from("outreach_contacts").update({ last_contacted_at: new Date().toISOString() }).eq("id", enr.contact_id).catch(() => {});
+  // NOTE: Supabase query builders are thenable but have no .catch(), so never chain
+  // .catch on them — it throws and would abort the advance. Just await; errors come
+  // back in { error } and are non-fatal here.
+  if (enr.contact_id) {
+    await sb.from("outreach_contacts").update({ last_contacted_at: new Date().toISOString() }).eq("id", enr.contact_id);
+  }
   return row.id;
 }
 
