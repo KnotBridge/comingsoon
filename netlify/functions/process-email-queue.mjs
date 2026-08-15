@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import {
   admin, json, siteBase, applySenderVars, injectTracking, htmlToText,
-  threadKey, snippet,
+  plainTextToHtml, threadKey, snippet,
 } from "../lib/shared.mjs";
 
 const BATCH = 20;
@@ -86,11 +86,24 @@ export default async () => {
 
     try {
       const subject = applySenderVars(item.subject, sender);
-      let html = applySenderVars(item.html_body, sender);
-      html = injectTracking(html, item.id, item.tracking_token, {
-        trackOpens: item.track_opens !== false, trackClicks: true,
-      });
-      const text = htmlToText(html);
+      const rawBody = applySenderVars(item.html_body, sender);
+      const isPlain = item.email_format === "plain";
+      let html, text;
+      if (isPlain) {
+        // Plain text: send the raw text (newlines/blank lines intact) as the text
+        // part, and a pre-wrap HTML mirror only when we need to carry the open pixel.
+        text = rawBody;
+        if (item.track_opens !== false) {
+          html = injectTracking(plainTextToHtml(rawBody), item.id, item.tracking_token, {
+            trackOpens: true, trackClicks: false,
+          });
+        }
+      } else {
+        html = injectTracking(rawBody, item.id, item.tracking_token, {
+          trackOpens: item.track_opens !== false, trackClicks: true,
+        });
+        text = htmlToText(html);
+      }
       const headers = {};
       if (item.include_unsubscribe !== false) {
         const unsub = `${base}/unsubscribe?email=${encodeURIComponent(item.recipient_email)}${item.outreach_campaign_id ? `&cid=${item.outreach_campaign_id}` : ""}`;

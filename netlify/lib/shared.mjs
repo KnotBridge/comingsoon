@@ -98,6 +98,13 @@ export function injectTracking(html, id, token, { trackClicks = true, trackOpens
   return out;
 }
 
+// Wrap raw plain text as HTML that preserves newlines AND blank lines (pre-wrap),
+// so a plain-text email keeps the exact spacing the user typed. Escapes HTML.
+export function plainTextToHtml(text) {
+  const esc = (text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<div style="white-space:pre-wrap;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1a1a1a;word-wrap:break-word;">${esc}</div>`;
+}
+
 export function htmlToText(html) {
   return (html || "")
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
