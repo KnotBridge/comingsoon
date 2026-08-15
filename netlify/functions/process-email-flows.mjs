@@ -69,8 +69,6 @@ export default async (req) => {
   return json({ enrolled, advanced });
 };
 
-export const config = { schedule: "* * * * *" };
-
 async function advanceOne(sb, enr, flow) {
   const nodes = flow.nodes_json || [];
   const edges = flow.edges_json || [];

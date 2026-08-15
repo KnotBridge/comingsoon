@@ -91,5 +91,3 @@ export default async () => {
 
   return json({ processed: imported, mailboxes: senders.length, ok, failed });
 };
-
-export const config = { schedule: "*/5 * * * *" };

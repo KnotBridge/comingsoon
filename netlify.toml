@@ -36,11 +36,7 @@
   to = "/admin/index.html"
   status = 200
 
-# Scheduled workers. Netlify Scheduled Functions replace pg_cron. (Schedules are
-# also declared in-code via `export const config` so manual deploys pick them up.)
-[functions."process-email-queue"]
-  schedule = "* * * * *"
-[functions."process-email-flows"]
-  schedule = "* * * * *"
-[functions."fetch-imap-replies"]
-  schedule = "*/5 * * * *"
+# Scheduled workers are the cron-*.mjs functions, which carry their own schedule
+# via `export const config`. The process-email-* / fetch-imap-replies functions
+# stay HTTP-only (scheduled functions can't be invoked over HTTP), so the app's
+# Send / Sync buttons can call them directly.

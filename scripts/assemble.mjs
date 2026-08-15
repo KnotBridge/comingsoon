@@ -55,12 +55,9 @@ const dragToml = `# Pre-built drag-and-drop deploy. No build runs; this folder i
   to = "/admin/index.html"
   status = 200
 
-[functions."process-email-queue"]
-  schedule = "* * * * *"
-[functions."process-email-flows"]
-  schedule = "* * * * *"
-[functions."fetch-imap-replies"]
-  schedule = "*/5 * * * *"
+# Scheduled workers are the cron-*.mjs functions (schedule declared in-code via
+# export const config). The process-email-* / fetch-imap-replies functions stay
+# HTTP-only so the app can invoke them directly.
 `;
 writeFileSync(join(publish, "netlify.toml"), dragToml);
 writeFileSync(

@@ -144,5 +144,3 @@ export default async () => {
 
   return json({ processed: items.length, sent, failed, skipped });
 };
-
-export const config = { schedule: "* * * * *" };
