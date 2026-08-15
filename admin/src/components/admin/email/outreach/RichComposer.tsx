@@ -67,19 +67,18 @@ function tagList(html: string): string[] {
   (html || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => { if (!isKeepTag(k)) s.add(k); return ""; });
   return [...s];
 }
-// Values we can auto-fill from the contact row (mirrors the flow engine).
+// Values we can auto-fill from the contact row (mirrors the send worker).
 function contactVars(c: any, fallback: { email?: string; name?: string }): Record<string, string> {
-  const name = c?.name || c?.agent_name || fallback.name || "";
+  const name = c?.name || fallback.name || "";
   const first = name.split(/\s+/)[0] || "";
-  const d = new Date(Date.now() + 7 * 86400e3);
+  const cat = c?.primary_category || (Array.isArray(c?.categories) ? c.categories[0] : "") || "";
   return {
-    name, first_name: first,
-    agent_name: c?.agent_name || "", agent_first_name: (c?.agent_name || "").split(/\s+/)[0] || "",
-    street_address: c?.street_address || "", property_address: c?.street_address || "",
-    city: c?.city || "", state: c?.property_state || "", email: c?.email || fallback.email || "",
-    days_on_market: c?.days_on_market != null ? String(c.days_on_market) : "",
-    listing_amount: c?.listing_amount != null ? String(c.listing_amount) : "",
-    deadline: d.toLocaleDateString("en-US", { month: "long", day: "numeric" }), trial_days: "7",
+    business_name: name, name, first_name: first,
+    category: cat, city: c?.city || "", state: c?.state || "",
+    website: c?.website_url || c?.domain || "", phone: c?.phone || "",
+    rating: c?.rating != null ? String(c.rating) : "",
+    review_count: c?.review_count != null ? String(c.review_count) : "",
+    email: c?.email || fallback.email || "",
   };
 }
 const humanizeTag = (k: string) => k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

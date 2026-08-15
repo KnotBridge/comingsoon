@@ -54,8 +54,9 @@ export function substituteVars(template, contact, opts = {}) {
     opts.campaignId ? `&cid=${opts.campaignId}` : ""
   }`;
   out = out.replace(/\{\{\s*unsubscribe_url\s*\}\}/gi, unsub);
-  // Drop any leftover unknown tags so recipients never see raw {{...}}.
-  out = out.replace(/\{\{\s*[a-z_]+\s*\}\}/gi, "");
+  // Drop leftover unknown tags so recipients never see raw {{...}} — but keep
+  // {{sender_*}} and {{tracked_image}}, which the send worker fills afterwards.
+  out = out.replace(/\{\{\s*(?!sender_|tracked_image)[a-z_]+\s*\}\}/gi, "");
   return out;
 }
 

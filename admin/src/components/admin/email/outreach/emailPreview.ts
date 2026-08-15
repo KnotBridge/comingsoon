@@ -6,14 +6,11 @@
 // Sample values so a preview reads like a real, personalized email without needing a
 // contact or campaign. Keys mirror the {{placeholders}} the composer offers.
 export const DEMO_VARS: Record<string, string> = {
-  name: "Alex Morgan", first_name: "Alex", agent_first_name: "Alex", agent_name: "Alex Morgan",
-  username: "@alexmorgan", followers: "24k", platform: "instagram",
-  bio_snippet: "Austin real estate, boutique listings",
-  street_address: "1420 Maple Ave", property_address: "1420 Maple Ave",
-  city: "Austin", state: "TX", zip: "78704", property_type: "Single family",
-  bedrooms: "4", bathrooms: "3", sqft: "2,450", year_built: "2016",
-  listing_amount: "$729,000", listing_price: "$729,000", days_on_market: "12",
-  deadline: "July 8", dynamic_page_url: "#", instant_login_url: "#", unsubscribe_url: "#",
+  business_name: "Glow Med Spa", name: "Glow Med Spa", first_name: "Glow",
+  category: "Medical spa", city: "Austin", state: "TX",
+  website: "glowmedspa.com", phone: "(512) 555-0142",
+  rating: "4.8", review_count: "212", email: "hello@glowmedspa.com",
+  unsubscribe_url: "#",
   // Sender tags are filled at send time from the mailbox that sends; here we just show a
   // stand-in persona so the sign-off previews sensibly.
   sender_name: "Justin Hociun", sender_first_name: "Justin", sender_last_name: "Hociun",

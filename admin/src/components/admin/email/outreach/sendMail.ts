@@ -143,62 +143,42 @@ function substituteOutreachVars(
   instantLoginUrl?: string,
   deadlineLabel?: string,
 ): string {
-  const unsubUrl = `${PUBLIC_APP_URL}/outreach/unsubscribe?email=${encodeURIComponent(String(contact.email || ""))}&cid=${campaignId}`;
-  const dynamicUrl = dynamicPageToken ? `${PUBLIC_APP_URL}/r/${dynamicPageToken}` : "";
-  const bio = typeof contact.bio === "string" ? contact.bio : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const unsubUrl = `${origin}/unsubscribe?email=${encodeURIComponent(String(contact.email || ""))}&cid=${campaignId}`;
   const name = typeof contact.name === "string" ? contact.name : "";
-  const username = typeof contact.username === "string" ? contact.username : "";
-  const platform = typeof contact.platform === "string" ? contact.platform : "";
-  const profileUrl = typeof contact.profile_url === "string" ? contact.profile_url : "";
-  const streetAddress = typeof contact.street_address === "string" ? contact.street_address : "";
+  const first = name.split(" ")[0] || "";
+  const cats = contact.categories;
+  const category =
+    (typeof contact.primary_category === "string" && contact.primary_category) ||
+    (Array.isArray(cats) ? String(cats[0] || "") : "") || "";
   const city = typeof contact.city === "string" ? contact.city : "";
-  const state = typeof contact.property_state === "string" ? contact.property_state : "";
-  const zip = typeof contact.property_zip === "string" ? contact.property_zip : "";
-  const propertyType = typeof contact.property_type === "string" ? contact.property_type : "";
-  const yearBuilt = contact.property_year_built != null ? String(contact.property_year_built) : "";
-  const bedrooms = contact.property_bedrooms != null ? String(contact.property_bedrooms) : "";
-  const bathrooms = contact.property_bathrooms != null ? String(contact.property_bathrooms) : "";
-  const sqft = formatNumber(contact.property_square_feet);
-  const listingAmount = formatMoney(contact.listing_amount);
-  const daysOnMarket = contact.days_on_market != null ? String(contact.days_on_market) : "";
-  const agentName = typeof contact.agent_name === "string" ? contact.agent_name : "";
-  const agentFirst = agentName.split(" ")[0] || name.split(" ")[0] || "";
+  const state = typeof contact.state === "string" ? contact.state : "";
+  const website =
+    (typeof contact.website_url === "string" && contact.website_url) ||
+    (typeof contact.domain === "string" ? contact.domain : "") || "";
+  const phone = typeof contact.phone === "string" ? contact.phone : "";
+  const rating = contact.rating != null ? String(contact.rating) : "";
+  const reviewCount = contact.review_count != null ? String(contact.review_count) : "";
+  const email = typeof contact.email === "string" ? contact.email : "";
 
-  return repairDuplicateUrlProtocols(template
-    .replace(/\{\{name\}\}/g, name)
-    .replace(/\{\{first_name\}\}/g, name.split(" ")[0] || "")
-    .replace(/\{\{agent_first_name\}\}/g, agentFirst)
-    .replace(/\{\{agent_name\}\}/g, agentName)
-    .replace(/\{\{username\}\}/g, username ? `@${username}` : "")
-    .replace(/\{\{followers\}\}/g, formatFollowers(contact.followers as number | null))
-    .replace(/\{\{platform\}\}/g, platform)
-    .replace(/\{\{bio_snippet\}\}/g, bio.substring(0, 80))
-    .replace(/\{\{profile_url\}\}/g, profileUrl)
-    .replace(/\{\{street_address\}\}/g, streetAddress)
-    .replace(/\{\{property_address\}\}/g, streetAddress)
-    .replace(/\{\{listingCity\}\}/g, city)
-    .replace(/\{\{city\}\}/g, city)
-    .replace(/\{\{state\}\}/g, state)
-    .replace(/\{\{property_state\}\}/g, state)
-    .replace(/\{\{zip\}\}/g, zip)
-    .replace(/\{\{property_zip\}\}/g, zip)
-    .replace(/\{\{property_type\}\}/g, propertyType)
-    .replace(/\{\{year_built\}\}/g, yearBuilt)
-    .replace(/\{\{property_year_built\}\}/g, yearBuilt)
-    .replace(/\{\{bedrooms\}\}/g, bedrooms)
-    .replace(/\{\{property_bedrooms\}\}/g, bedrooms)
-    .replace(/\{\{bathrooms\}\}/g, bathrooms)
-    .replace(/\{\{property_bathrooms\}\}/g, bathrooms)
-    .replace(/\{\{square_feet\}\}/g, sqft)
-    .replace(/\{\{property_square_feet\}\}/g, sqft)
-    .replace(/\{\{sqft\}\}/g, sqft)
-    .replace(/\{\{listing_amount\}\}/g, listingAmount)
-    .replace(/\{\{listing_price\}\}/g, listingAmount)
-    .replace(/\{\{days_on_market\}\}/g, daysOnMarket)
-    .replace(/\{\{deadline\}\}/g, deadlineLabel || "")
-    .replace(/\{\{dynamic_page_url\}\}/g, dynamicUrl)
-    .replace(/\{\{instant_login_url\}\}/g, instantLoginUrl || dynamicUrl)
-    .replace(/\{\{unsubscribe_url\}\}/g, unsubUrl));
+  // Fill business tags. Sender tags ({{sender_*}}) and {{tracked_image}} are left
+  // for the send worker. Any other leftover {{tag}} is dropped so recipients never
+  // see a raw, unfilled placeholder.
+  const filled = template
+    .replace(/\{\{\s*business_name\s*\}\}/g, name)
+    .replace(/\{\{\s*name\s*\}\}/g, name)
+    .replace(/\{\{\s*first_name\s*\}\}/g, first)
+    .replace(/\{\{\s*category\s*\}\}/g, category)
+    .replace(/\{\{\s*city\s*\}\}/g, city)
+    .replace(/\{\{\s*state\s*\}\}/g, state)
+    .replace(/\{\{\s*website\s*\}\}/g, website)
+    .replace(/\{\{\s*phone\s*\}\}/g, phone)
+    .replace(/\{\{\s*rating\s*\}\}/g, rating)
+    .replace(/\{\{\s*review_count\s*\}\}/g, reviewCount)
+    .replace(/\{\{\s*email\s*\}\}/g, email)
+    .replace(/\{\{\s*unsubscribe_url\s*\}\}/g, unsubUrl)
+    .replace(/\{\{\s*(?!sender_|tracked_image)[a-z_]+\s*\}\}/gi, "");
+  return repairDuplicateUrlProtocols(filled);
 }
 
 // Wrap links through track-click ONLY when click tracking is on (off keeps links clean
@@ -359,10 +339,10 @@ export async function queueOutreachCampaign(campaign: OutreachCampaignRow): Prom
     return { queued: 0, heldForTomorrow: 0 };
   }
 
-  const tpl = `${campaign.body_html || ""} ${campaign.subject || ""}`;
-  const hasDynamicVar = tpl.includes("{{dynamic_page_url}}");
-  const hasInstantVar = tpl.includes("{{instant_login_url}}");
-  const needsDynamicPage = hasDynamicVar || hasInstantVar;
+  // Real-estate dynamic pages / instant-login tokens are removed in this build,
+  // so we never provision those (the tables no longer exist).
+  const hasInstantVar = false;
+  const needsDynamicPage = false;
 
   const CHUNK = 200;
   const nowIso = new Date().toISOString();

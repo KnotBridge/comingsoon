@@ -89,7 +89,7 @@ export default function RichEmailEditor({ value, onChange, themeKey, onThemeKey,
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={"Hi {{first_name}},\n\nWrite your message here. Blank lines are kept.\n\nJustin"}
+          placeholder={"Hi {{business_name}},\n\nWrite your message here. Blank lines are kept.\n\nJustin"}
           className="w-full px-4 py-3 outline-none resize-y bg-background text-foreground min-h-[340px] leading-relaxed"
           style={{ fontFamily: "Helvetica, Arial, sans-serif", fontSize: 15, whiteSpace: "pre-wrap" }}
           spellCheck
@@ -228,7 +228,7 @@ function RichHtmlEditor({ value, onChange, themeKey, onThemeKey }: Omit<Props, "
       return;
     }
 
-    const input = window.prompt("Link URL, email address, or {{dynamic_page_url}}:");
+    const input = window.prompt("Link URL or email address:");
     const url = normalizeEmailLinkInput(input || "");
     if (url) runCommand("createLink", url);
   };
@@ -398,7 +398,7 @@ function RichHtmlEditor({ value, onChange, themeKey, onThemeKey }: Omit<Props, "
           onChange={(event) => onChange(event.target.value)}
           rows={16}
           spellCheck={false}
-          placeholder="<p>Hi {{first_name}},</p>"
+          placeholder="<p>Hi {{business_name}},</p>"
           className="w-full px-3 py-2 outline-none resize-y font-mono text-xs bg-background text-foreground min-h-[340px]"
         />
       )}

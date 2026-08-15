@@ -54,12 +54,12 @@ const TPL = {
   user: { table: "email_templates", htmlCol: "html_template" },
 } as const;
 
-// Sample values for previewing dynamic tags as they'd render for a real agent.
+// Sample values for previewing merge tags as they'd render for a real business.
 const DEMO_VARS: Record<string, string> = {
-  first_name: "Sarah", name: "Sarah Chen", agent_name: "Sarah Chen", agent_first_name: "Sarah",
-  street_address: "1428 Maple Avenue", city: "Austin", days_on_market: "34",
-  email: "sarah@example.com", dynamic_page_url: "https://renov.space/r/demo",
-  deadline: "June 16", deadline_date: "2026-06-16", trial_days: "7",
+  business_name: "Glow Med Spa", name: "Glow Med Spa", first_name: "Glow",
+  category: "Medical spa", city: "Austin", state: "TX",
+  website: "glowmedspa.com", phone: "(512) 555-0142",
+  rating: "4.8", review_count: "212", email: "hello@glowmedspa.com",
 };
 function fillDemo(s: string): string {
   return (s || "").replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (_m, k) => DEMO_VARS[k.toLowerCase()] ?? `{{${k}}}`);
