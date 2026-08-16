@@ -102,10 +102,18 @@ async function advanceOne(sb, enr, flow) {
     if (node.type === "email") {
       const senderId = await resolveFlowSender(sb, flow);
       const qid = await queueEmail(sb, enr, node, senderId);
-      if (qid) lastQueueId = qid;
+      if (qid) {
+        lastQueueId = qid;
+        // Record node -> queue-item so the flow's funnel stats can count this send.
+        enr.context = enr.context || {};
+        enr.context.sentItems = enr.context.sentItems || [];
+        if (!enr.context.sentItems.some((i) => i.qid === qid)) {
+          enr.context.sentItems.push({ node: node.id, qid });
+        }
+      }
       const next = follow(edges, node.id);
       await sb.from("email_flow_enrollments").update({
-        current_node_id: next, last_queue_item_id: lastQueueId,
+        current_node_id: next, last_queue_item_id: lastQueueId, context: enr.context,
         next_run_at: new Date(Date.now() + 30_000).toISOString(),
         status: next ? "active" : "completed",
       }).eq("id", enr.id);
