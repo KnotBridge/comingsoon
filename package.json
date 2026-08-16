@@ -14,7 +14,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.57.2",
     "imapflow": "^1.0.164",
-    "nodemailer": "^6.9.16"
+    "nodemailer": "^6.9.16",
+    "mailparser": "^3.7.1"
   },
   "devDependencies": {
     "esbuild": "^0.24.2"
