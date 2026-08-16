@@ -167,12 +167,15 @@ async function queueEmail(sb, enr, node, senderId) {
   let subject = node.config?.subject || "";
   let bodyHtml = node.config?.body_html || node.config?.bodyHtml || "";
   const templateId = node.config?.templateId;
-  let trackOpens = true, includeUnsub = true;
+  let trackOpens = true, includeUnsub = true, emailFormat = node.config?.email_format || "html";
+  let trackingImageUrl = null;
   if (templateId) {
     const { data: tpl } = await sb.from("outreach_templates").select("*").eq("id", templateId).maybeSingle();
     if (tpl) {
       subject = tpl.subject; bodyHtml = tpl.body_html;
       trackOpens = tpl.track_opens !== false; includeUnsub = tpl.include_unsubscribe !== false;
+      emailFormat = tpl.email_format || "html"; // carry plain vs html through to the send worker
+      trackingImageUrl = tpl.tracking_image_url || null;
     }
   }
   if (!subject && !bodyHtml) return null; // misconfigured node — nothing to send
@@ -187,6 +190,7 @@ async function queueEmail(sb, enr, node, senderId) {
     flow_id: enr.flow_id, flow_node_id: node.id, sender_account_id: senderId,
     recipient_email: contact.email, recipient_name: contact.name,
     subject: substituteVars(subject, contact), html_body: substituteVars(bodyHtml, contact),
+    email_format: emailFormat, tracking_image_url: trackingImageUrl,
     track_opens: trackOpens, include_unsubscribe: includeUnsub, status: "pending",
   }).select("id").single();
   if (error) { console.error("queueEmail", error.message); return null; }
