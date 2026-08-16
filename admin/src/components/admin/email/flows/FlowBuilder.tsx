@@ -493,13 +493,8 @@ function FlowBuilderInner({ domain }: { domain: Domain }) {
       if (pageQ.has(qid)) viewedC.add(c);
       if (repliedQ.has(qid)) repliedC.add(c);
     }
-    const uniqC = [...new Set(contactIds)];
+    // The dynamic-page "signed up" funnel is a removed real-estate feature.
     const signedC = new Set<string>();
-    for (let i = 0; i < uniqC.length; i += 200) {
-      const { data: pg } = await supabase.from("outreach_dynamic_pages")
-        .select("contact_id,signed_in_user_id").in("contact_id", uniqC.slice(i, i + 200));
-      for (const p of (pg as any[]) || []) if (p.contact_id && p.signed_in_user_id) signedC.add(p.contact_id);
-    }
     // "viewed" = unique contacts with a page_view tied to one of this flow's emails.
     // Same underlying signal the cards and Sent Log use, so the views never disagree.
     setFunnel({ enrolled: rows.length, sent: sentC.size, opened: openedC.size, clicked: clickedC.size, replied: repliedC.size, viewed: viewedC.size, signed: signedC.size });
