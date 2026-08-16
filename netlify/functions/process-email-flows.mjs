@@ -51,6 +51,14 @@ export default async (req) => {
     .select("*").eq("status", "active").lte("next_run_at", now)
     .order("next_run_at", { ascending: true }).limit(ADVANCE_LIMIT);
 
+  // Claim this batch by pushing next_run_at forward, so an overlapping run (manual
+  // Start + the every-minute cron) can't grab the same enrollments and double-queue.
+  if (due?.length) {
+    await sb.from("email_flow_enrollments")
+      .update({ next_run_at: new Date(Date.now() + 120000).toISOString() })
+      .in("id", due.map((e) => e.id)).eq("status", "active");
+  }
+
   const flowCache = new Map();
   const getFlow = async (id) => {
     if (!flowCache.has(id)) {
@@ -194,19 +202,30 @@ async function queueEmail(sb, enr, node, senderId) {
 
 async function resolveFlowSender(sb, flow) {
   if (flow.sender_account_id) return flow.sender_account_id;
-  if (flow.sender_group_id) {
+
+  // Rotate across a group's active senders so volume spreads (not all on one
+  // mailbox hitting its daily cap). Use the flow's group, else the default group.
+  let groupId = flow.sender_group_id;
+  if (!groupId) {
+    const { data: g } = await sb.from("sender_groups").select("id").eq("is_default", true).limit(1).maybeSingle();
+    groupId = g?.id || null;
+  }
+  if (groupId) {
     const { data: senders } = await sb.from("email_sender_accounts")
-      .select("id").eq("group_id", flow.sender_group_id).eq("is_active", true).order("created_at");
+      .select("id").eq("group_id", groupId).eq("is_active", true).order("created_at");
     if (senders?.length) {
-      const { data: grp } = await sb.from("sender_groups").select("rotation_cursor").eq("id", flow.sender_group_id).maybeSingle();
+      const { data: grp } = await sb.from("sender_groups").select("rotation_cursor").eq("id", groupId).maybeSingle();
       const cursor = grp?.rotation_cursor ?? 0;
-      await sb.from("sender_groups").update({ rotation_cursor: cursor + 1 }).eq("id", flow.sender_group_id);
+      await sb.from("sender_groups").update({ rotation_cursor: cursor + 1 }).eq("id", groupId);
       return senders[cursor % senders.length].id;
     }
   }
-  const { data: def } = await sb.from("email_sender_accounts")
-    .select("id").eq("is_active", true).order("is_default", { ascending: false }).limit(1).maybeSingle();
-  return def?.id || null;
+
+  // Last resort: rotate across ALL active senders using their own cursor counter.
+  const { data: all } = await sb.from("email_sender_accounts")
+    .select("id").eq("is_active", true).order("created_at");
+  if (all?.length) return all[Math.floor(Math.random() * all.length)].id;
+  return null;
 }
 
 async function enroll(sb, flowId, opts) {
