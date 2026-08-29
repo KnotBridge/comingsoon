@@ -42,9 +42,15 @@ interface Props {
   value: string | null;                 // image_template_id on the email template
   onChange: (id: string | null) => void;
   onInsertTag?: () => void;             // drop {{dynamic_image}} into the body
+  /** The email body + format, so the checklist can tell you what's still missing. */
+  body?: string;
+  emailFormat?: string;
+  onFixFormat?: () => void;             // switch the template to HTML
+  /** Bubble the sample render up so the email preview can show it. */
+  onPreviewUrl?: (url: string | null) => void;
 }
 
-export default function ImageTemplatePicker({ value, onChange, onInsertTag }: Props) {
+export default function ImageTemplatePicker({ value, onChange, onInsertTag, body = "", emailFormat = "html", onFixFormat, onPreviewUrl }: Props) {
   const [templates, setTemplates] = useState<ImageTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -69,6 +75,9 @@ export default function ImageTemplatePicker({ value, onChange, onInsertTag }: Pr
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Share the sample render with the parent so the email preview shows the image.
+  useEffect(() => { onPreviewUrl?.(picked?.preview_url ?? null); }, [picked?.preview_url, onPreviewUrl]);
 
   // Is the local renderer reachable?
   useEffect(() => {
@@ -268,12 +277,100 @@ export default function ImageTemplatePicker({ value, onChange, onInsertTag }: Pr
             </div>
           )}
 
-          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-            <Check className="w-3 h-3 text-emerald-600" />
-            Put <code className="bg-muted px-1 rounded">{"{{dynamic_image}}"}</code> where the image should appear. Each recipient gets their own.
-          </p>
+          <Checklist
+            picked={picked}
+            body={body}
+            emailFormat={emailFormat}
+            rendererUp={rendererUp}
+            onInsertTag={onInsertTag}
+            onFixFormat={onFixFormat}
+          />
         </div>
       )}
+    </div>
+  );
+}
+
+// Everything that has to be true for a personalised image to actually arrive.
+// Each failing row says what to do about it, so a send never silently produces
+// an email with no picture.
+function Checklist({
+  picked, body, emailFormat, rendererUp, onInsertTag, onFixFormat,
+}: {
+  picked: ImageTemplate;
+  body: string;
+  emailFormat: string;
+  rendererUp: boolean | null;
+  onInsertTag?: () => void;
+  onFixFormat?: () => void;
+}) {
+  const layers = picked.layers || [];
+  const mapped = layers.filter((l) => picked.mapping?.[l.id]);
+  const missingFonts = layers.filter((l) => !l.fontAvailable);
+  const hasTag = /\{\{\s*(dynamic_image|tracked_image)(?::\d+)?\s*\}\}/i.test(body);
+  const isPlain = emailFormat === "plain";
+
+  const rows: { ok: boolean; label: string; hint?: string; action?: { label: string; run: () => void } }[] = [
+    {
+      ok: rendererUp === true,
+      label: "Local renderer running",
+      hint: "Images are drawn on your machine — run `npm run local` in the R'NQ folder.",
+    },
+    {
+      ok: layers.length > 0 && mapped.length === layers.length,
+      label: `Every layer mapped (${mapped.length}/${layers.length})`,
+      hint: "Pick what each text layer should say, above.",
+    },
+    {
+      ok: hasTag,
+      label: "Image tag in the email body",
+      hint: "The body needs {{dynamic_image}} where the picture goes.",
+      action: onInsertTag && !hasTag ? { label: "Insert it", run: onInsertTag } : undefined,
+    },
+    {
+      ok: !isPlain,
+      label: "Format is Rich (HTML)",
+      hint: "Plain-text email cannot show a picture — switch to Rich (HTML).",
+      action: onFixFormat && isPlain ? { label: "Switch to HTML", run: onFixFormat } : undefined,
+    },
+    {
+      ok: missingFonts.length === 0,
+      label: "Fonts installed",
+      hint: missingFonts.length
+        ? `Missing: ${missingFonts.map((l) => l.font).join(", ")}. Install it, or drop the .otf/.ttf into tools/render/fonts.`
+        : undefined,
+    },
+    {
+      ok: !!picked.preview_url,
+      label: "Sample rendered",
+      hint: "Press Preview to confirm the artwork looks right before sending.",
+    },
+  ];
+
+  const failing = rows.filter((r) => !r.ok);
+
+  return (
+    <div className="rounded-md border border-border/60 bg-background px-2.5 py-2 space-y-1">
+      <p className="text-[11px] font-medium text-foreground">
+        {failing.length === 0
+          ? "Ready to send — every recipient will get their own image."
+          : `${failing.length} thing${failing.length === 1 ? "" : "s"} to fix before this image will arrive`}
+      </p>
+      {rows.map((r) => (
+        <div key={r.label} className="flex items-start gap-1.5 text-[11px]">
+          {r.ok
+            ? <Check className="w-3 h-3 mt-0.5 text-emerald-600 shrink-0" />
+            : <AlertTriangle className="w-3 h-3 mt-0.5 text-amber-600 shrink-0" />}
+          <span className={cn("flex-1", r.ok ? "text-muted-foreground" : "text-foreground")}>
+            {r.label}
+            {!r.ok && r.hint && <span className="block text-muted-foreground">{r.hint}</span>}
+          </span>
+          {!r.ok && r.action && (
+            <button type="button" onClick={r.action.run}
+              className="text-[10px] text-primary underline shrink-0">{r.action.label}</button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

@@ -67,6 +67,9 @@ export default function ComposePage({ audiences, prefill, onPrefillConsumed }: P
   const [sendSettings, setSendSettings] = useState({ email_format: "html", track_opens: true, track_clicks: false, include_unsubscribe: false, tracking_image_url: "" });
   // The template this compose was built from, so per-template reply performance can attribute it.
   const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null);
+  // The applied template's personalised image. outreach_campaigns has no column
+  // for it, so it rides along in memory to the queueing step.
+  const [imageTemplateId, setImageTemplateId] = useState<string | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [lineage, setLineage] = useState<{ parentId: string; parentName: string; segment: FollowUpSegment } | null>(null);
   const subjectRef = useRef<HTMLTextAreaElement>(null);
@@ -159,6 +162,7 @@ export default function ComposePage({ audiences, prefill, onPrefillConsumed }: P
       tracking_image_url: (tt.tracking_image_url as string) || "",
     });
     setAppliedTemplateId(t.id);
+    setImageTemplateId((tt.image_template_id as string) || null);
     setShowTemplateDropdown(false);
     toast.success(`Template "${t.name}" loaded`);
   };
@@ -291,7 +295,11 @@ export default function ComposePage({ audiences, prefill, onPrefillConsumed }: P
     // Expand + queue directly through the deployed worker (send-outreach is not
     // deployed on the platform; queueOutreachCampaign is a faithful port of it).
     try {
-      const { queued, heldForTomorrow } = await queueOutreachCampaign({ ...(campaign as OutreachCampaignRow), template_id: appliedTemplateId });
+      const { queued, heldForTomorrow } = await queueOutreachCampaign({
+        ...(campaign as OutreachCampaignRow),
+        template_id: appliedTemplateId,
+        image_template_id: imageTemplateId,
+      });
       setSending(false);
       if (queued === 0) { toast.error("No eligible recipients (all unsubscribed or filtered out)"); return; }
       const via = groupId ? ` across ${senderGroups.find((g) => g.id === groupId)?.name ?? "the group"}` : "";

@@ -73,6 +73,8 @@ export default function TemplatesPage() {
   const [settings, setSettings] = useState({ email_format: "html", track_opens: true, track_clicks: false, include_unsubscribe: false, tracking_image_url: "", image_template_id: null as string | null });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Sample render of the personalised image, so the body preview shows it.
+  const [dynamicImageUrl, setDynamicImageUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -384,6 +386,13 @@ export default function TemplatesPage() {
                   <ImageTemplatePicker
                     value={settings.image_template_id}
                     onChange={(id) => setSettings((s) => ({ ...s, image_template_id: id }))}
+                    body={form.body_html}
+                    emailFormat={settings.email_format}
+                    onPreviewUrl={setDynamicImageUrl}
+                    onFixFormat={() => {
+                      setSettings((s) => ({ ...s, email_format: "html" }));
+                      toast.success("Switched to Rich (HTML) so the image can show");
+                    }}
                     onInsertTag={() => {
                       setForm((f) => ({ ...f, body_html: `${f.body_html}
 {{dynamic_image}}` }));

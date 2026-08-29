@@ -31,6 +31,19 @@ export function escapeHtml(s: string): string {
 // Replace {{tracked_image}} / {{tracked_image:width}} with the real image (when a URL is
 // set) or a dashed placeholder (when not). Width/style mirror the send worker so the
 // preview is faithful. Safe to call on already-escaped text: it only touches the tag.
+/**
+ * Replace {{dynamic_image}} with the personalised artwork (a sample render).
+ * Without this the preview shows nothing where the image will actually be, which
+ * reads as "the feature is broken".
+ */
+export function resolveDynamicImage(str: string, url?: string | null): string {
+  const re = /\{\{\s*dynamic_image\s*\}\}/gi;
+  return (str || "").replace(re, () => {
+    if (url) return `<img src="${url}" alt="" style="width:100%;max-width:600px;height:auto;display:block;border:0;margin:8px 0;" />`;
+    return `<div style="max-width:600px;border:1px dashed #bbb;border-radius:8px;padding:16px;text-align:center;color:#999;font-size:12px;margin:8px 0;">Personalised image — press Preview on the image template to render a sample</div>`;
+  });
+}
+
 export function resolveTrackedImage(str: string, url?: string | null): string {
   const re = /\{\{\s*tracked_image(?::(\d+))?\s*\}\}/gi;
   return (str || "").replace(re, (_m, w) => {
@@ -52,17 +65,18 @@ export function buildEmailPreviewSrcDoc(opts: {
   body: string;
   format?: string | null;
   trackingImageUrl?: string | null;
+  dynamicImageUrl?: string | null;
   fill?: (s: string) => string;
 }): string {
-  const { body, format, trackingImageUrl, fill = fillDemo } = opts;
+  const { body, format, trackingImageUrl, dynamicImageUrl, fill = fillDemo } = opts;
   const isPlain = format === "plain";
   let inner: string;
   if (isPlain) {
     // Escape the text so it renders literally, then drop the image in at the tag's spot.
-    const text = resolveTrackedImage(escapeHtml(fill(body || "")), trackingImageUrl);
+    const text = resolveDynamicImage(resolveTrackedImage(escapeHtml(fill(body || "")), trackingImageUrl), dynamicImageUrl);
     inner = `<div style="white-space:pre-wrap;word-wrap:break-word;">${text}</div>`;
   } else {
-    inner = resolveTrackedImage(fill(body || ""), trackingImageUrl);
+    inner = resolveDynamicImage(resolveTrackedImage(fill(body || ""), trackingImageUrl), dynamicImageUrl);
   }
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><base target="_blank"><style>${DOC_STYLES}</style></head><body>${inner}</body></html>`;
 }
