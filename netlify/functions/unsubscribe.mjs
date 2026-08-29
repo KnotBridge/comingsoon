@@ -11,11 +11,28 @@ const page = (msg) => new Response(
   { headers: { "content-type": "text/html; charset=utf-8" } }
 );
 
+// A GET must never unsubscribe: spam filters and link-scanners fetch every URL
+// in an email, which would silently opt people out. RFC 8058 one-click uses
+// POST, so we act on POST and show a confirm button on GET.
+const confirmPage = (email) => new Response(
+  `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+   <title>Unsubscribe</title>
+   <div style="font-family:system-ui,sans-serif;max-width:520px;margin:12vh auto;padding:0 24px;text-align:center;color:#111">
+     <h1 style="font-size:20px;margin:0 0 8px">Unsubscribe ${email.replace(/[<>&]/g, "")}?</h1>
+     <p style="color:#666;font-size:14px;margin:0 0 20px">You'll stop receiving emails from us.</p>
+     <form method="POST">
+       <button type="submit" style="background:#ff0048;color:#fff;border:0;border-radius:8px;padding:12px 24px;font-size:15px;cursor:pointer">Yes, unsubscribe me</button>
+     </form>
+   </div>`,
+  { headers: { "content-type": "text/html; charset=utf-8" } }
+);
+
 export default async (req) => {
   const url = new URL(req.url);
   const email = (url.searchParams.get("email") || "").toLowerCase().trim();
   const cid = url.searchParams.get("cid");
   if (!email) return page("Invalid unsubscribe link.");
+  if (req.method !== "POST") return confirmPage(email);
   try {
     const sb = admin();
     const { data: contact } = await sb.from("outreach_contacts").select("id").eq("email", email).maybeSingle();

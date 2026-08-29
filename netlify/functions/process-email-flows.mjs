@@ -101,7 +101,27 @@ async function advanceOne(sb, enr, flow) {
 
     if (node.type === "email") {
       const senderId = await resolveFlowSender(sb, flow);
-      const qid = await queueEmail(sb, enr, node, senderId);
+      const res = await queueEmail(sb, enr, node, senderId);
+
+      // If we could NOT queue (DB error, misconfigured node), do not advance.
+      // Marching on would silently skip this person with no email ever sent —
+      // burning a whole audience while the flow reports itself healthy.
+      if (res.status === "error") {
+        console.error(`[flows] hold ${enr.id} at ${node.id}: ${res.reason}`);
+        await sb.from("email_flow_enrollments").update({
+          next_run_at: new Date(Date.now() + 5 * 60_000).toISOString(),
+        }).eq("id", enr.id);
+        return;
+      }
+      if (res.status === "misconfigured") {
+        console.error(`[flows] node ${node.id} has no template/body — failing enrollment ${enr.id}`);
+        await sb.from("email_flow_enrollments").update({
+          status: "failed", current_node_id: node.id,
+        }).eq("id", enr.id);
+        return;
+      }
+
+      const qid = res.qid;
       if (qid) {
         lastQueueId = qid;
         // Record node -> queue-item so the flow's funnel stats can count this send.
@@ -170,7 +190,7 @@ async function queueEmail(sb, enr, node, senderId) {
     const { data: dup } = await sb.from("email_queue").select("id")
       .eq("flow_id", enr.flow_id).eq("flow_node_id", node.id)
       .eq("outreach_contact_id", enr.contact_id).limit(1).maybeSingle();
-    if (dup) return dup.id;
+    if (dup) return { status: "duplicate", qid: dup.id };
   }
   let subject = node.config?.subject || "";
   let bodyHtml = node.config?.body_html || node.config?.bodyHtml || "";
@@ -187,7 +207,7 @@ async function queueEmail(sb, enr, node, senderId) {
       imageTemplateId = tpl.image_template_id || null;
     }
   }
-  if (!subject && !bodyHtml) return null; // misconfigured node — nothing to send
+  if (!subject && !bodyHtml) return { status: "misconfigured" };
 
   let contact = { email: enr.email, name: enr.email };
   if (enr.contact_id) {
@@ -237,7 +257,7 @@ async function queueEmail(sb, enr, node, senderId) {
     console.warn("[flows] render columns missing — queueing without personalised image");
     ({ data: row, error } = await sb.from("email_queue").insert(base).select("id").single());
   }
-  if (error) { console.error("queueEmail", error.message); return null; }
+  if (error) { console.error("queueEmail", error.message); return { status: "error", reason: error.message }; }
 
   // NOTE: Supabase query builders are thenable but have no .catch(), so never chain
   // .catch on them — it throws and would abort the advance. Just await; errors come
@@ -245,7 +265,7 @@ async function queueEmail(sb, enr, node, senderId) {
   if (enr.contact_id) {
     await sb.from("outreach_contacts").update({ last_contacted_at: new Date().toISOString() }).eq("id", enr.contact_id);
   }
-  return row.id;
+  return { status: "queued", qid: row.id };
 }
 
 async function resolveFlowSender(sb, flow) {
@@ -288,11 +308,17 @@ async function enroll(sb, flowId, opts) {
   contacts = (contacts || []).filter((c) => c.email && !["unsubscribed", "rejected"].includes(c.status));
   if (!contacts.length) return 0;
 
-  // Skip contacts already enrolled in this flow.
+  // Skip contacts already enrolled in this flow. CHUNKED: a single .in() with a
+  // few thousand ids blows the URL length, the query errors, every contact then
+  // looks "fresh" and the flow re-enrolls the whole audience every tick.
   const ids = contacts.map((c) => c.id);
-  const { data: existing } = await sb.from("email_flow_enrollments")
-    .select("contact_id").eq("flow_id", flowId).in("contact_id", ids);
-  const have = new Set((existing || []).map((e) => e.contact_id));
+  const have = new Set();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data: existing, error } = await sb.from("email_flow_enrollments")
+      .select("contact_id").eq("flow_id", flowId).in("contact_id", ids.slice(i, i + 200));
+    if (error) { console.error("[flows] enroll dedup failed — aborting to avoid duplicates:", error.message); return 0; }
+    for (const e of existing || []) have.add(e.contact_id);
+  }
   const fresh = contacts.filter((c) => !have.has(c.id));
   if (!fresh.length) return 0;
 

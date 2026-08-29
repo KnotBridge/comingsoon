@@ -110,7 +110,10 @@ export async function queueAndSend(
 // Where the public /r/<token> landing pages and /outreach/unsubscribe live.
 // Hardcoded (not window.location.origin) because the admin app may run on a
 // preview domain, which would bake broken links into real outreach emails.
-const PUBLIC_APP_URL = "https://renov.space";
+// The public site that serves /unsubscribe and the tracking routes. Overridable
+// at build time so a different deployment does not ship dead links.
+const PUBLIC_SITE_URL = (import.meta as any).env?.VITE_PUBLIC_SITE_URL || "https://rnq.agency";
+const PUBLIC_APP_URL = PUBLIC_SITE_URL;
 const FREE_WINDOW_DAYS = 7;
 
 function formatFollowers(n: number | null): string {
@@ -144,8 +147,9 @@ function substituteOutreachVars(
   instantLoginUrl?: string,
   deadlineLabel?: string,
 ): string {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const unsubUrl = `${origin}/unsubscribe?email=${encodeURIComponent(String(contact.email || ""))}&cid=${campaignId}`;
+  // NEVER window.location.origin: composing from localhost or a preview domain
+  // would bake a dead unsubscribe link into real outreach.
+  const unsubUrl = `${PUBLIC_SITE_URL}/unsubscribe?email=${encodeURIComponent(String(contact.email || ""))}&cid=${campaignId}`;
 
   // One shared value map (identical to the flow engine's), so an email composed
   // here and the same template sent by a flow fill exactly the same way.
@@ -312,10 +316,26 @@ export async function queueOutreachCampaign(campaign: OutreachCampaignRow): Prom
     recipients = (data as Record<string, unknown>[]) || [];
   }
 
-  // 2. Drop globally-unsubscribed addresses.
-  const { data: unsubs } = await supabase.from("outreach_unsubscribes").select("email");
-  const unsubEmails = new Set(((unsubs as { email: string }[]) || []).map((u) => u.email));
-  recipients = recipients.filter((c) => !unsubEmails.has(String(c.email)));
+  // 2. Drop suppressed addresses: unsubscribes AND the blacklist (bounces,
+  //    complaints, manual blocks). Paged — a plain select stops at 1000 rows,
+  //    which would quietly let suppressed people back into a send.
+  const allSuppressed = async (table: string): Promise<string[]> => {
+    const out: string[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from(table as any).select("email").range(from, from + 999);
+      if (error) throw new Error(`${table}: ${error.message}`);
+      const rows = (data as { email: string }[]) || [];
+      out.push(...rows.map((r) => (r.email || "").toLowerCase()));
+      if (rows.length < 1000) break;
+    }
+    return out;
+  };
+  const [unsubList, blockList] = await Promise.all([
+    allSuppressed("outreach_unsubscribes"),
+    allSuppressed("email_blacklist"),
+  ]);
+  const suppressed = new Set([...unsubList, ...blockList]);
+  recipients = recipients.filter((c) => !suppressed.has(String(c.email || "").toLowerCase()));
 
   if (recipients.length === 0) {
     await supabase.from("outreach_campaigns")
@@ -492,9 +512,15 @@ export async function queueOutreachCampaign(campaign: OutreachCampaignRow): Prom
   await supabase.from("outreach_campaigns")
     .update({ status: "sending", total_recipients: recipients.length, sent_at: nowIso })
     .eq("id", campaign.id);
+  // Only move "new" forward — overwriting everyone with "contacted" would wipe
+  // replied/interested/customer and keep chasing people who already answered.
+  const recipientIds = recipients.map((r) => r.id as string);
   await supabase.from("outreach_contacts")
     .update({ last_contacted_at: nowIso, status: "contacted" })
-    .in("id", recipients.map((r) => r.id as string));
+    .eq("status", "new").in("id", recipientIds);
+  await supabase.from("outreach_contacts")
+    .update({ last_contacted_at: nowIso })
+    .neq("status", "new").in("id", recipientIds);
 
   return { queued: totalQueued, heldForTomorrow };
 }

@@ -28,23 +28,34 @@ export default async () => {
   const items = (rows || []).filter((r) => !r.render_status || r.render_status === "done");
   if (!items.length) return json({ processed: 0 });
 
-  // Lease.
+  // Claim the batch ATOMICALLY. The `.eq("status","pending")` guard means only
+  // one runner can flip a given row to "sending" — the loser's update matches
+  // nothing. We then process ONLY the rows we actually won, so the every-minute
+  // cron, the local worker and a manual "send now" can never double-send.
   const lease = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-  await sb.from("email_queue").update({ status: "sending", scheduled_for: lease })
-    .in("id", items.map((i) => i.id));
+  const { data: claimed, error: claimErr } = await sb.from("email_queue")
+    .update({ status: "sending", scheduled_for: lease })
+    .in("id", items.map((i) => i.id))
+    .eq("status", "pending")
+    .select("id");
+  if (claimErr) return json({ processed: 0, error: claimErr.message }, 500);
+
+  const won = new Set((claimed || []).map((r) => r.id));
+  const batch = items.filter((i) => won.has(i.id));
+  if (!batch.length) return json({ processed: 0, note: "another runner claimed this batch" });
 
   // Blacklist.
-  const emails = [...new Set(items.map((i) => i.recipient_email.toLowerCase()))];
+  const emails = [...new Set(batch.map((i) => i.recipient_email.toLowerCase()))];
   const { data: bl } = await sb.from("email_blacklist").select("email").in("email", emails);
   const blocked = new Set((bl || []).map((r) => r.email.toLowerCase()));
 
   // Load senders referenced by this batch.
-  const senderIds = [...new Set(items.map((i) => i.sender_account_id).filter(Boolean))];
+  const senderIds = [...new Set(batch.map((i) => i.sender_account_id).filter(Boolean))];
   let senders = [];
   if (senderIds.length) ({ data: senders } = await sb.from("email_sender_accounts").select("*").in("id", senderIds));
   const senderMap = new Map((senders || []).map((s) => [s.id, s]));
   let fallback = null;
-  if (items.some((i) => !i.sender_account_id)) {
+  if (batch.some((i) => !i.sender_account_id)) {
     ({ data: fallback } = await sb.from("email_sender_accounts")
       .select("*").eq("is_active", true).order("is_default", { ascending: false }).limit(1).maybeSingle());
   }
@@ -64,7 +75,7 @@ export default async () => {
   const dailyCount = new Map();
   let sent = 0, failed = 0, skipped = 0;
 
-  for (const item of items) {
+  for (const item of batch) {
     if (blocked.has(item.recipient_email.toLowerCase())) {
       await sb.from("email_queue").update({ status: "failed", error_message: "blacklisted", sent_at: now }).eq("id", item.id);
       continue;
@@ -94,7 +105,19 @@ export default async () => {
 
     try {
       const subject = applySenderVars(item.subject, sender);
-      const rawBody = applySenderVars(item.html_body, sender);
+      let rawBody = applySenderVars(item.html_body, sender);
+
+      // {{tracked_image}} / {{tracked_image:width}} -> the real image, or nothing.
+      // Without this the literal tag is delivered to the recipient.
+      rawBody = rawBody.replace(/\{\{\s*tracked_image(?::(\d+))?\s*\}\}/gi, (_m, w) => {
+        if (!item.tracking_image_url) return "";
+        const width = w ? Math.min(Math.max(parseInt(w, 10), 40), 1200) : 480;
+        return `<img src="${item.tracking_image_url}" alt="" style="width:100%;max-width:${width}px;height:auto;display:block;border:0;margin:8px 0;" />`;
+      });
+      // Any image tag still unresolved (e.g. the renderer never ran) is dropped
+      // rather than shipped raw.
+      rawBody = rawBody.replace(/\{\{\s*dynamic_image\s*\}\}/gi, "");
+
       const isPlain = item.email_format === "plain";
       let html, text;
       if (isPlain) {
@@ -155,7 +178,7 @@ export default async () => {
   }
 
   // Mark fully-drained campaigns as sent.
-  const campIds = [...new Set(items.map((i) => i.outreach_campaign_id).filter(Boolean))];
+  const campIds = [...new Set(batch.map((i) => i.outreach_campaign_id).filter(Boolean))];
   for (const cid of campIds) {
     const { count } = await sb.from("email_queue")
       .select("id", { count: "exact", head: true })
@@ -163,5 +186,5 @@ export default async () => {
     if (!count) await sb.from("outreach_campaigns").update({ status: "sent" }).eq("id", cid);
   }
 
-  return json({ processed: items.length, sent, failed, skipped });
+  return json({ processed: batch.length, sent, failed, skipped });
 };

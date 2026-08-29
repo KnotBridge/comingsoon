@@ -12,7 +12,12 @@ export default async (req) => {
   const token = url.searchParams.get("t");
   const lid = url.searchParams.get("lid");
   const dest = url.searchParams.get("u");
-  const safe = dest && /^https?:\/\//i.test(dest) ? dest : "https://rnq.agency";
+  const HOME = "https://rnq.agency";
+  const wanted = dest && /^https?:\/\//i.test(dest) ? dest : HOME;
+  // Only honour the destination once the queue row + token check out. Otherwise
+  // anyone could use this endpoint as an open redirect on the sending domain,
+  // which is exactly what gets a domain flagged for phishing.
+  let safe = HOME;
 
   try {
     const sb = admin();
@@ -20,6 +25,7 @@ export default async (req) => {
       .select("id, outreach_campaign_id, recipient_email, tracking_token")
       .eq("id", id).eq("tracking_token", token).maybeSingle();
     if (q) {
+      safe = wanted;
       const { count } = await sb.from("email_events")
         .select("id", { count: "exact", head: true })
         .eq("queue_item_id", id).eq("event_type", "click");

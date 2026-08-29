@@ -86,7 +86,9 @@ export function substituteVars(template, contact, opts = {}) {
   // Drop leftover unknown tags so recipients never see raw {{...}} — but keep
   // {{sender_*}} (filled by the send worker) and the image placeholders
   // {{tracked_image}} / {{dynamic_image}} (filled by the local renderer).
-  out = out.replace(/\{\{\s*(?!sender_|tracked_image|dynamic_image)[a-z_]+\s*\}\}/gi, "");
+  // [a-z0-9_] — a tag containing a digit (address_2, tag1) must be stripped too,
+  // otherwise it ships to the recipient as a raw {{placeholder}}.
+  out = out.replace(/\{\{\s*(?!sender_|tracked_image|dynamic_image)[a-z0-9_]+\s*\}\}/gi, "");
   return out;
 }
 
