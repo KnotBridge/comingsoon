@@ -70,6 +70,9 @@ export default function ComposePage({ audiences, prefill, onPrefillConsumed }: P
   // The applied template's personalised image. outreach_campaigns has no column
   // for it, so it rides along in memory to the queueing step.
   const [imageTemplateId, setImageTemplateId] = useState<string | null>(null);
+  // Sample render of that PSD, so the preview shows the picture the recipient
+  // will get instead of silently dropping the {{tracked_image}} tag.
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [lineage, setLineage] = useState<{ parentId: string; parentName: string; segment: FollowUpSegment } | null>(null);
   const subjectRef = useRef<HTMLTextAreaElement>(null);
@@ -115,6 +118,17 @@ export default function ComposePage({ audiences, prefill, onPrefillConsumed }: P
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!imageTemplateId) { setImagePreviewUrl(null); return; }
+    let cancelled = false;
+    supabase.from("image_templates" as never)
+      .select("preview_url").eq("id", imageTemplateId).maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setImagePreviewUrl(((data as unknown) as { preview_url?: string } | null)?.preview_url ?? null);
+      });
+    return () => { cancelled = true; };
+  }, [imageTemplateId]);
 
   // Live count for audience mode
   useEffect(() => {
@@ -238,8 +252,8 @@ export default function ComposePage({ audiences, prefill, onPrefillConsumed }: P
   const applySub = (text: string) => (text || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => (subMap[k] != null && subMap[k] !== "" ? subMap[k] : `{{${k}}}`));
   const previewSubject = useMemo(() => applySub(subject), [subject, subMap]); // eslint-disable-line react-hooks/exhaustive-deps
   const previewDoc = useMemo(
-    () => buildEmailPreviewSrcDoc({ body: bodyHtml, format: sendSettings.email_format, trackingImageUrl: sendSettings.tracking_image_url, fill: applySub }),
-    [bodyHtml, subMap, sendSettings.email_format, sendSettings.tracking_image_url], // eslint-disable-line react-hooks/exhaustive-deps
+    () => buildEmailPreviewSrcDoc({ body: bodyHtml, format: sendSettings.email_format, trackingImageUrl: sendSettings.tracking_image_url, dynamicImageUrl: imagePreviewUrl, fill: applySub }),
+    [bodyHtml, subMap, sendSettings.email_format, sendSettings.tracking_image_url, imagePreviewUrl], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // Debounce the srcDoc so the preview iframe doesn't reload on every keystroke.
