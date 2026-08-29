@@ -24,7 +24,6 @@ import { cn } from "@/lib/utils";
 // and error messages. The wrapper silences successes and rewrites every error to a
 // generic "Oops…", which made a working enroll look like a failure.
 import { toast } from "sonner";
-import { AGENT_JOURNEY_TEMPLATES, INTRO_FALLBACK, SIG_MARK, FALLBACK_SIG, buildAgentJourney } from "./agentJourney";
 
 // Pull the signature block off the PropStream intro (everything after the CTA,
 // before the P.S.) so every follow-up can end with the exact same sign-off.
@@ -638,62 +637,6 @@ function FlowBuilderInner({ domain }: { domain: Domain }) {
   // One-click: reuse your real "PropStream Real Estate USA 6" as the intro, seed
   // the 6 follow-ups into outreach_templates (idempotent by name), and wire the
   // full branching graph as a new PAUSED outreach flow ready to review.
-  const createAgentJourney = async () => {
-    setSaving(true);
-    try {
-      const { data: existing } = await supabase.from("outreach_templates").select("id,name");
-      const rows = (existing as any[]) || [];
-      const byName = new Map<string, string>(rows.map((t) => [t.name, t.id]));
-      const idByKey: Record<string, string> = {};
-
-      // Intro = your existing PropStream template, reused verbatim.
-      let introId = byName.get("PropStream Real Estate USA 6") || byName.get(INTRO_FALLBACK.name);
-      if (!introId) {
-        const { data, error } = await supabase.from("outreach_templates")
-          .insert({ name: INTRO_FALLBACK.name, subject: INTRO_FALLBACK.subject, body_html: INTRO_FALLBACK.body_html }).select("id").single();
-        if (error) throw error;
-        introId = (data as any).id;
-      }
-      idByKey["intro"] = introId!;
-
-      // Pull the exact signature off the intro so every follow-up ends the same way.
-      let signature = FALLBACK_SIG;
-      try {
-        const { data: introTpl } = await supabase.from("outreach_templates").select("body_html").eq("id", introId).maybeSingle();
-        const extracted = extractSignature((introTpl as any)?.body_html || "");
-        if (extracted) signature = extracted;
-      } catch { /* keep fallback */ }
-
-      // Follow-ups — upsert (update if present) so re-running refreshes copy + signature.
-      for (const tpl of AGENT_JOURNEY_TEMPLATES) {
-        const body = tpl.body_html.replace(SIG_MARK, signature);
-        const existingId = byName.get(tpl.name);
-        if (existingId) {
-          const { error } = await supabase.from("outreach_templates").update({ subject: tpl.subject, body_html: body }).eq("id", existingId);
-          if (error) throw error;
-          idByKey[tpl.key] = existingId;
-        } else {
-          const { data, error } = await supabase.from("outreach_templates").insert({ name: tpl.name, subject: tpl.subject, body_html: body }).select("id").single();
-          if (error) throw error;
-          idByKey[tpl.key] = (data as any).id;
-        }
-      }
-
-      const g = buildAgentJourney(idByKey);
-      const { data: flow, error } = await supabase.from("email_flows" as any).insert({
-        name: g.name, domain: "outreach", trigger_type: "manual_enroll", is_active: false,
-        nodes_json: g.nodes, edges_json: g.edges,
-      }).select("*").single();
-      if (error) throw error;
-      await loadFlows();
-      selectFlow(flow as any);
-      toast.success("Agent journey ready: PropStream intro + 7 follow-ups (your signature copied onto each). Re-run anytime to refresh the copy. Pick an audience on the trigger, Save, then flip Active.");
-    } catch (err: any) {
-      toast.error(err?.message || "Couldn't create the journey");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const onConnect = useCallback((c: Connection) => setEdges((eds) => addEdge({ ...c, animated: true }, eds)), [setEdges]);
 
@@ -950,17 +893,6 @@ function FlowBuilderInner({ domain }: { domain: Domain }) {
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{domain === "outreach" ? "Outreach" : "User"} flows</span>
           <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={createFlow}><Plus className="w-3.5 h-3.5" /></Button>
         </div>
-        {domain === "outreach" && (
-          <button
-            onClick={createAgentJourney}
-            disabled={saving}
-            title="Seed the full agent email journey (7 emails + branching graph) as a paused flow"
-            className="mx-2 mt-2 mb-1 flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-            New: Agent journey
-          </button>
-        )}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
           {loading ? <div className="text-xs text-muted-foreground p-2">Loading…</div>
             : flows.length === 0 ? <div className="text-xs text-muted-foreground p-2">No flows yet. Hit + to create one.</div>

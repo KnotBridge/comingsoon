@@ -267,10 +267,11 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
 
       // Look up existing contacts by email (email is globally unique → one row each).
       const emails = incoming.map(c => c.email!);
-      const existing = new Map<string, { id: string; street_address: string | null; audience_id: string | null }>();
+      const existing = new Map<string, { id: string; audience_id: string | null }>();
       for (let i = 0; i < emails.length; i += 300) {
-        const { data } = await supabase.from("outreach_contacts")
-          .select("id,email,street_address,audience_id").in("email", emails.slice(i, i + 300));
+        const { data, error } = await supabase.from("outreach_contacts")
+          .select("id,email,audience_id").in("email", emails.slice(i, i + 300));
+        if (error) throw error; // surface it instead of silently treating everyone as new
         for (const r of (data as any[]) || []) existing.set(r.email, r);
       }
 
@@ -287,20 +288,13 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
           added++;
           continue;
         }
-        const newAddr = norm(c.street_address);
-        const oldAddr = norm(ex.street_address);
-        if (newAddr && newAddr !== oldAddr) {
-          // New listing → update the contact and move it into this audience
-          // (which removes it from its old one). Keep the same row/id, and keep
-          // its status (don't reset an already-contacted agent back to "new").
-          const { id: _i, audience_id: _a, status: _s, ...fields } = c as any;
-          toUpdate.push({ id: ex.id, data: { ...fields, name: c.name!, audience_id: targetId } });
-          if (ex.audience_id && ex.audience_id !== targetId) { affected.add(ex.audience_id); moved++; }
-          else updated++;
-        } else {
-          // Already exists with the same listing → skip.
-          skipped++;
-        }
+        // Already known → refresh its details from the file and move it into this
+        // audience (which removes it from its old one). Keep the same row/id and
+        // its status, so an already-contacted business isn't reset to "new".
+        const { id: _i, audience_id: _a, status: _s, ...fields } = c as any;
+        toUpdate.push({ id: ex.id, data: { ...fields, name: c.name!, audience_id: targetId } });
+        if (ex.audience_id && ex.audience_id !== targetId) { affected.add(ex.audience_id); moved++; }
+        else updated++;
       }
 
       for (let i = 0; i < toInsert.length; i += 300) {
@@ -318,7 +312,7 @@ export default function AudiencesPage({ audiences, onRefresh }: Props) {
         await supabase.from("outreach_audiences").update({ contact_count: count || 0 }).eq("id", aid);
       }
 
-      toast.success(`${added} added · ${moved} moved here · ${updated} updated · ${skipped} skipped (same listing)`);
+      toast.success(`${added} added · ${moved} moved here · ${updated} updated`);
       setImportPreview(null);
       setImportSkipped([]);
       loadContacts(selectedAudience);

@@ -220,15 +220,23 @@ async function queueEmail(sb, enr, node, senderId) {
     }
   }
 
-  const { data: row, error } = await sb.from("email_queue").insert({
+  const base = {
     queue_type: "outreach", outreach_contact_id: enr.contact_id || null,
     flow_id: enr.flow_id, flow_node_id: node.id, sender_account_id: senderId,
     recipient_email: contact.email, recipient_name: contact.name,
     subject: substituteVars(subject, contact), html_body: substituteVars(bodyHtml, contact),
     email_format: emailFormat, tracking_image_url: trackingImageUrl,
     track_opens: trackOpens, include_unsubscribe: includeUnsub, status: "pending",
-    render_status: renderStatus, render_spec: renderSpec,
-  }).select("id").single();
+  };
+  const withRender = renderStatus ? { ...base, render_status: renderStatus, render_spec: renderSpec } : base;
+
+  let { data: row, error } = await sb.from("email_queue").insert(withRender).select("id").single();
+  // The personalised-image columns are optional; if that migration isn't applied,
+  // queue the email anyway rather than dropping it on the floor.
+  if (error && renderStatus && /render_(status|spec)/.test(error.message || "")) {
+    console.warn("[flows] render columns missing — queueing without personalised image");
+    ({ data: row, error } = await sb.from("email_queue").insert(base).select("id").single());
+  }
   if (error) { console.error("queueEmail", error.message); return null; }
 
   // NOTE: Supabase query builders are thenable but have no .catch(), so never chain

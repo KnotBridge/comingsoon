@@ -15,13 +15,18 @@ export default async () => {
   await sb.from("email_queue").update({ status: "pending" })
     .eq("status", "sending").lte("scheduled_for", now);
 
-  // Never send a row whose personalised image hasn't been drawn yet — the local
-  // renderer flips render_status to 'done' (and rewrites the body) first.
-  const { data: items } = await sb.from("email_queue")
+  // NOTE: filter render_status in JS, not SQL. The personalised-image migration
+  // is optional — if those columns don't exist yet, a SQL filter on them makes
+  // the whole query fail and the queue silently stops draining.
+  const { data: rows, error: fetchErr } = await sb.from("email_queue")
     .select("*").eq("status", "pending").lte("scheduled_for", now)
-    .or("render_status.is.null,render_status.eq.done")
     .order("scheduled_for", { ascending: true }).limit(BATCH);
-  if (!items?.length) return json({ processed: 0 });
+  if (fetchErr) return json({ processed: 0, error: fetchErr.message }, 500);
+
+  // Hold back anything still waiting on its artwork (undefined when the feature
+  // isn't installed, which correctly means "nothing to wait for").
+  const items = (rows || []).filter((r) => !r.render_status || r.render_status === "done");
+  if (!items.length) return json({ processed: 0 });
 
   // Lease.
   const lease = new Date(Date.now() + 5 * 60 * 1000).toISOString();

@@ -5,7 +5,6 @@ import type { OutreachCampaign, OutreachAudience, ComposePrefill, FollowUpSegmen
 import { ChevronDown, ChevronRight, Eye, X, RefreshCw, Trash2, Reply, CornerDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useDynamicPageStats } from "@/hooks/useDynamicPageStats";
 import { buildEmailPreviewSrcDoc } from "./emailPreview";
 import FlowSentLog from "./FlowSentLog";
 
@@ -52,47 +51,6 @@ function pct(n: number, total: number) {
   if (!total) return "—";
   return Math.round((Math.min(n, total) / total) * 100) + "%";
 }
-
-function ConversionCells({ campaignId, total }: { campaignId: string; total: number }) {
-  const { stats, loading } = useDynamicPageStats(campaignId);
-  if (loading) {
-    return (
-      <>
-        <td className="px-3 py-2.5 text-xs text-muted-foreground">…</td>
-        <td className="px-3 py-2.5 text-xs text-muted-foreground">…</td>
-      </>
-    );
-  }
-  if (!stats || stats.total === 0) {
-    return (
-      <>
-        <td className="px-3 py-2.5 text-xs text-muted-foreground">—</td>
-        <td className="px-3 py-2.5 text-xs text-muted-foreground">—</td>
-      </>
-    );
-  }
-  return (
-    <>
-      <td className="px-3 py-2.5 text-xs">
-        {stats.signedIn > 0 ? (
-          <span className="text-foreground font-medium">{stats.signedIn}</span>
-        ) : (
-          <span className="text-muted-foreground">0</span>
-        )}
-        <span className="text-muted-foreground/70 ml-1">({pct(stats.signedIn, total || stats.total)})</span>
-      </td>
-      <td className="px-3 py-2.5 text-xs">
-        {stats.projectCreated > 0 ? (
-          <span className="text-foreground font-medium">{stats.projectCreated}</span>
-        ) : (
-          <span className="text-muted-foreground">0</span>
-        )}
-        <span className="text-muted-foreground/70 ml-1">({pct(stats.projectCreated, total || stats.total)})</span>
-      </td>
-    </>
-  );
-}
-
 
 export default function SentLogPage({ audiences, onFollowUp }: Props) {
   const [campaigns, setCampaigns] = useState<OutreachCampaign[]>([]);
@@ -377,8 +335,6 @@ export default function SentLogPage({ audiences, onFollowUp }: Props) {
                  <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Clicks</th>
                  <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Replies</th>
                  <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium" title="Hard bounces reported by Amazon SES. Suppressed so they won't be re-sent.">Bounced</th>
-                 <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium" title="Recipients who signed in via the dynamic landing page">Signed in</th>
-                 <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium" title="Recipients who completed project creation">Project</th>
                  <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Status</th>
                  <th className="text-left px-3 py-2 text-xs text-muted-foreground font-medium">Date</th>
                  <th className="w-8 px-3 py-2" />
@@ -430,7 +386,6 @@ export default function SentLogPage({ audiences, onFollowUp }: Props) {
                           : <span className="text-muted-foreground">—</span>;
                       })()}
                     </td>
-                    <ConversionCells campaignId={c.id} total={c.total_recipients || 0} />
                     <td className="px-3 py-2.5">
                       <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                         <span className={cn("w-[7px] h-[7px] rounded-full flex-shrink-0", CAMPAIGN_STATUS_DOT[c.status] || "bg-muted-foreground/40")} />
@@ -465,7 +420,7 @@ export default function SentLogPage({ audiences, onFollowUp }: Props) {
 
                   {expandedId === c.id && (
                     <tr key={c.id + "-detail"}>
-                      <td colSpan={13} className="px-4 py-3 bg-muted/10 border-b border-border">
+                      <td colSpan={11} className="px-4 py-3 bg-muted/10 border-b border-border">
                         {loadingDetail ? (
                           <p className="text-xs text-muted-foreground py-2">Loading detail…</p>
                         ) : queueItems.length === 0 ? (

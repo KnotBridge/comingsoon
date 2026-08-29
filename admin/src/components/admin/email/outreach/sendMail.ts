@@ -180,6 +180,7 @@ export interface OutreachCampaignRow {
   include_unsubscribe?: boolean | null;
   tracking_image_url?: string | null;
   template_id?: string | null;
+  image_template_id?: string | null;
 }
 
 /**
@@ -273,6 +274,17 @@ async function planGroupRotation(
 // Expand a saved outreach_campaigns row into queued emails and kick the worker.
 // Returns how many recipients were queued.
 export async function queueOutreachCampaign(campaign: OutreachCampaignRow): Promise<{ queued: number; heldForTomorrow: number }> {
+  // Personalised artwork, same as the flow engine: load the layer->tag mapping
+  // once, then freeze each recipient's strings onto their queue row. The sender
+  // skips rows whose art isn't drawn yet, so nothing goes out half-finished.
+  let imageMapping: Record<string, string> | null = null;
+  if (campaign.image_template_id) {
+    const { data: img } = await supabase.from("image_templates")
+      .select("id, mapping").eq("id", campaign.image_template_id).maybeSingle();
+    const m = (img as { mapping?: Record<string, string> } | null)?.mapping;
+    if (m && Object.keys(m).length) imageMapping = m;
+  }
+
   // 1. Resolve recipients (mirrors send-outreach's recipient query).
   let recipients: Record<string, unknown>[] = [];
   if (campaign.contact_ids && campaign.contact_ids.length > 0) {
@@ -443,6 +455,28 @@ export async function queueOutreachCampaign(campaign: OutreachCampaignRow): Prom
         include_unsubscribe: campaign.include_unsubscribe === true,
         tracking_image_url: campaign.tracking_image_url || null,
         template_id: campaign.template_id || null,
+        ...(imageMapping
+          ? {
+              render_status: "pending",
+              render_spec: {
+                imageTemplateId: campaign.image_template_id,
+                values: (() => {
+                  const full = (ident?.name || "").trim();
+                  const vals: Record<string, string> = {
+                    ...contactMergeValues(contact),
+                    sender_name: full,
+                    sender_first_name: full.split(/\s+/)[0] || "",
+                    sender_email: ident?.email || "",
+                  };
+                  const out: Record<string, string> = {};
+                  for (const [layerId, tag] of Object.entries(imageMapping)) {
+                    if (tag) out[layerId] = vals[tag] ?? "";
+                  }
+                  return out;
+                })(),
+              },
+            }
+          : {}),
       };
     });
 

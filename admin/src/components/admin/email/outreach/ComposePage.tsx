@@ -11,7 +11,7 @@ import HighlightedTextarea from "./HighlightedTextarea";
 import { queueOutreachCampaign, type OutreachCampaignRow } from "./sendMail";
 import { buildEmailPreviewSrcDoc } from "./emailPreview";
 import { TARGET_DEFAULT, parseTarget, targetValue, type GroupLite } from "./senderTargets";
-import { CORE_TAGS, SENDER_TAGS } from "./mergeValues";
+import { CORE_TAGS, SENDER_TAGS, contactMergeValues } from "./mergeValues";
 
 // Built from the shared tag list so the picker can never offer a tag the send
 // path doesn't actually fill. Sender tags are resolved by the worker from the
@@ -201,45 +201,16 @@ export default function ComposePage({ audiences, prefill, onPrefillConsumed }: P
 
   // Build the {{var}} -> value map from the sample contact (or a generic demo one).
   const subMap = useMemo<Record<string, string>>(() => {
-    const sample = sampleContact || { name: "Alex Morgan", email: "alex@example.com", username: "alexmorgan", followers: 24000, platform: "instagram", bio: "Austin real estate, boutique listings.", street_address: "1420 Maple Ave", city: "Austin", property_state: "TX", property_zip: "78704", property_type: "Single family", property_bedrooms: 4, property_bathrooms: 3, property_square_feet: 2450, property_year_built: 2016, listing_amount: 729000, days_on_market: 12, agent_name: "Alex Morgan" };
-    const fmtNum = (n: unknown) => {
-      if (n == null || n === "") return "";
-      const x = Number(n);
-      return Number.isFinite(x) ? Math.round(x).toLocaleString("en-US") : "";
+    // Preview with a REAL contact from the chosen audience when we have one, so
+    // what you see is what that recipient gets. Falls back to a demo business.
+    const sample = sampleContact || {
+      name: "Glow Med Spa", email: "hello@glowmedspa.com", primary_category: "Medical spa",
+      city: "Austin", state: "TX", postal_code: "78704", address: "1420 Maple Ave",
+      website_url: "glowmedspa.com", phone: "(512) 555-0142", rating: 4.8, review_count: 212,
     };
-    const fmtMoney = (n: unknown) => { const s = fmtNum(n); return s ? "$" + s : ""; };
     return {
-      name: String(sample.name || ""),
-      first_name: String(sample.name || "").split(" ")[0],
-      agent_first_name: String(sample.agent_name || sample.name || "").split(" ")[0],
-      agent_name: String(sample.agent_name || ""),
-      username: sample.username ? `@${sample.username}` : "",
-      followers: sample.followers ? (Number(sample.followers) >= 1000 ? Math.round(Number(sample.followers) / 1000) + "k" : String(sample.followers)) : "",
-      platform: String(sample.platform || ""),
-      bio_snippet: String(sample.bio || "").substring(0, 80),
-      street_address: String(sample.street_address || ""),
-      property_address: String(sample.street_address || ""),
-      listingCity: String(sample.city || ""),
-      city: String(sample.city || ""),
-      state: String(sample.property_state || ""),
-      property_state: String(sample.property_state || ""),
-      zip: String(sample.property_zip || ""),
-      property_zip: String(sample.property_zip || ""),
-      property_type: String(sample.property_type || ""),
-      year_built: sample.property_year_built != null ? String(sample.property_year_built) : "",
-      property_year_built: sample.property_year_built != null ? String(sample.property_year_built) : "",
-      bedrooms: sample.property_bedrooms != null ? String(sample.property_bedrooms) : "",
-      property_bedrooms: sample.property_bedrooms != null ? String(sample.property_bedrooms) : "",
-      bathrooms: sample.property_bathrooms != null ? String(sample.property_bathrooms) : "",
-      property_bathrooms: sample.property_bathrooms != null ? String(sample.property_bathrooms) : "",
-      sqft: fmtNum(sample.property_square_feet),
-      square_feet: fmtNum(sample.property_square_feet),
-      property_square_feet: fmtNum(sample.property_square_feet),
-      listing_amount: fmtMoney(sample.listing_amount),
-      listing_price: fmtMoney(sample.listing_amount),
-      days_on_market: sample.days_on_market != null ? String(sample.days_on_market) : "",
-      dynamic_page_url: "#",
-      instant_login_url: "#",
+      // Same map the send path uses — preview and delivery can't disagree.
+      ...contactMergeValues(sample as Record<string, unknown>),
       unsubscribe_url: "#",
       // Preview the sender tags with the sender actually chosen in "From", so the
       // sign-off in the preview reads exactly as the recipient will get it.
