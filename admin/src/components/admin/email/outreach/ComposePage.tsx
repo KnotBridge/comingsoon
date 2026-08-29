@@ -11,26 +11,15 @@ import HighlightedTextarea from "./HighlightedTextarea";
 import { queueOutreachCampaign, type OutreachCampaignRow } from "./sendMail";
 import { buildEmailPreviewSrcDoc } from "./emailPreview";
 import { TARGET_DEFAULT, parseTarget, targetValue, type GroupLite } from "./senderTargets";
+import { CORE_TAGS, SENDER_TAGS } from "./mergeValues";
 
-const VARIABLE_CHIPS = [
-  { label: "{{business_name}}", desc: "Business name" },
-  { label: "{{name}}", desc: "Business name (alias)" },
-  { label: "{{first_name}}", desc: "First word of the business name" },
-  { label: "{{category}}", desc: "Primary category (e.g. Medical spa)" },
-  { label: "{{city}}", desc: "City" },
-  { label: "{{state}}", desc: "State" },
-  { label: "{{website}}", desc: "Website / domain" },
-  { label: "{{phone}}", desc: "Phone number" },
-  { label: "{{rating}}", desc: "Google rating" },
-  { label: "{{review_count}}", desc: "Number of reviews" },
-  { label: "{{email}}", desc: "Contact email" },
-  { label: "{{unsubscribe_url}}", desc: "Unsubscribe link" },
-  // Filled at send time from the mailbox that actually sends, so one template signs
-  // off with each sender's own name.
-  { label: "{{sender_name}}", desc: "The sending persona's full name" },
-  { label: "{{sender_first_name}}", desc: "The sending persona's first name" },
-  { label: "{{sender_email}}", desc: "The sending mailbox's address" },
-];
+// Built from the shared tag list so the picker can never offer a tag the send
+// path doesn't actually fill. Sender tags are resolved by the worker from the
+// mailbox that sends, so one template signs off with each persona's own name.
+const VARIABLE_CHIPS = [...CORE_TAGS, ...SENDER_TAGS].map((t) => ({
+  label: `{{${t.tag}}}`,
+  desc: t.desc,
+}));
 
 interface Props {
   audiences: OutreachAudience[];

@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { contactMergeValues } from "./mergeValues";
 import { Button } from "@/components/ui/button";
 import { Bold, Italic, Underline, List, ListOrdered, Link2, PenLine, FileText, Send, Loader2, ChevronDown, Star, PenSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,8 @@ interface Tpl { id: string; name: string; subject: string | null; body_html: str
 // tags (resolved server-side from the sending mailbox) and {{tracked_image}} (resolved by
 // the send worker into the real image), which are left intact.
 const isSenderTag = (k: string) => /^sender_/i.test(k);
-const isKeepTag = (k: string) => isSenderTag(k) || k.toLowerCase() === "tracked_image";
+// Image tags are filled later by the local renderer, so they must survive here.
+const isKeepTag = (k: string) => isSenderTag(k) || /^(tracked_image|dynamic_image)$/i.test(k);
 function fillTags(html: string, values: Record<string, string>): string {
   return (html || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (m, k) => {
     if (isKeepTag(k)) return m; // resolved server-side (sender identity / tracked image)
@@ -67,19 +69,17 @@ function tagList(html: string): string[] {
   (html || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, k) => { if (!isKeepTag(k)) s.add(k); return ""; });
   return [...s];
 }
-// Values we can auto-fill from the contact row (mirrors the send worker).
+// Values we can auto-fill from the contact row. Uses the SAME map as the send
+// path so the preview and the delivered email can never disagree.
 function contactVars(c: any, fallback: { email?: string; name?: string }): Record<string, string> {
-  const name = c?.name || fallback.name || "";
-  const first = name.split(/\s+/)[0] || "";
-  const cat = c?.primary_category || (Array.isArray(c?.categories) ? c.categories[0] : "") || "";
-  return {
-    business_name: name, name, first_name: first,
-    category: cat, city: c?.city || "", state: c?.state || "",
-    website: c?.website_url || c?.domain || "", phone: c?.phone || "",
-    rating: c?.rating != null ? String(c.rating) : "",
-    review_count: c?.review_count != null ? String(c.review_count) : "",
-    email: c?.email || fallback.email || "",
-  };
+  const base = contactMergeValues(c || { name: fallback.name, email: fallback.email });
+  if (!base.email && fallback.email) base.email = fallback.email;
+  if (!base.business_name && fallback.name) {
+    base.business_name = fallback.name;
+    base.name = fallback.name;
+    base.first_name = fallback.name.split(/\s+/)[0] || "";
+  }
+  return base;
 }
 const humanizeTag = (k: string) => k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 

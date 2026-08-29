@@ -11,6 +11,7 @@
     "@supabase/supabase-js": "^2.57.2",
     "ag-psd": "^31.0.2",
     "express": "^5.2.1",
-    "multer": "^2.3.0"
+    "multer": "^2.3.0",
+    "papaparse": "^5.7.0"
   }
 }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { CORE_TAGS } from "./mergeValues";
 import { toast } from "sonner";
 import type { OutreachTemplate } from "./types";
 import { Plus, Pencil, Trash2, FileText, X, Save, Eye, Image as ImageIcon, Loader2 } from "lucide-react";
@@ -301,7 +302,10 @@ export default function TemplatesPage() {
                   Email body
                 </label>
                 <p className="text-xs text-muted-foreground -mt-0.5 leading-relaxed">
-                  Use: <code className="bg-muted px-1 rounded">{"{{business_name}}"}</code> <code className="bg-muted px-1 rounded">{"{{first_name}}"}</code> <code className="bg-muted px-1 rounded">{"{{category}}"}</code> <code className="bg-muted px-1 rounded">{"{{city}}"}</code> <code className="bg-muted px-1 rounded">{"{{state}}"}</code> <code className="bg-muted px-1 rounded">{"{{website}}"}</code> <code className="bg-muted px-1 rounded">{"{{phone}}"}</code> <code className="bg-muted px-1 rounded">{"{{rating}}"}</code> <code className="bg-muted px-1 rounded">{"{{review_count}}"}</code> <code className="bg-muted px-1 rounded">{"{{email}}"}</code> <code className="bg-muted px-1 rounded">{"{{unsubscribe_url}}"}</code>
+                  Use:{" "}
+                  {CORE_TAGS.map((t) => (
+                    <code key={t.tag} title={t.desc} className="bg-muted px-1 rounded mr-1">{`{{${t.tag}}}`}</code>
+                  ))}
                 </p>
                 <p className="text-xs text-muted-foreground -mt-0.5 leading-relaxed">
                   Sender tags (filled from whichever mailbox sends it, so one template signs off with each persona's own name):{" "}

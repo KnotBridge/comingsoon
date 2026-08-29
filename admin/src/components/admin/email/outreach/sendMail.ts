@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { invokeFn } from "@/integrations/functions";
+import { contactMergeValues, fillMergeTags } from "./mergeValues";
 
 // Send an email straight through the existing, deployed worker (process-email-queue):
 // insert a queue row (admins are allowed by RLS) with tracking baked in, then kick the
@@ -145,40 +146,12 @@ function substituteOutreachVars(
 ): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const unsubUrl = `${origin}/unsubscribe?email=${encodeURIComponent(String(contact.email || ""))}&cid=${campaignId}`;
-  const name = typeof contact.name === "string" ? contact.name : "";
-  const first = name.split(" ")[0] || "";
-  const cats = contact.categories;
-  const category =
-    (typeof contact.primary_category === "string" && contact.primary_category) ||
-    (Array.isArray(cats) ? String(cats[0] || "") : "") || "";
-  const city = typeof contact.city === "string" ? contact.city : "";
-  const state = typeof contact.state === "string" ? contact.state : "";
-  const website =
-    (typeof contact.website_url === "string" && contact.website_url) ||
-    (typeof contact.domain === "string" ? contact.domain : "") || "";
-  const phone = typeof contact.phone === "string" ? contact.phone : "";
-  const rating = contact.rating != null ? String(contact.rating) : "";
-  const reviewCount = contact.review_count != null ? String(contact.review_count) : "";
-  const email = typeof contact.email === "string" ? contact.email : "";
 
-  // Fill business tags. Sender tags ({{sender_*}}) and {{tracked_image}} are left
-  // for the send worker. Any other leftover {{tag}} is dropped so recipients never
-  // see a raw, unfilled placeholder.
-  const filled = template
-    .replace(/\{\{\s*business_name\s*\}\}/g, name)
-    .replace(/\{\{\s*name\s*\}\}/g, name)
-    .replace(/\{\{\s*first_name\s*\}\}/g, first)
-    .replace(/\{\{\s*category\s*\}\}/g, category)
-    .replace(/\{\{\s*city\s*\}\}/g, city)
-    .replace(/\{\{\s*state\s*\}\}/g, state)
-    .replace(/\{\{\s*website\s*\}\}/g, website)
-    .replace(/\{\{\s*phone\s*\}\}/g, phone)
-    .replace(/\{\{\s*rating\s*\}\}/g, rating)
-    .replace(/\{\{\s*review_count\s*\}\}/g, reviewCount)
-    .replace(/\{\{\s*email\s*\}\}/g, email)
-    .replace(/\{\{\s*unsubscribe_url\s*\}\}/g, unsubUrl)
-    .replace(/\{\{\s*(?!sender_|tracked_image)[a-z_]+\s*\}\}/gi, "");
-  return repairDuplicateUrlProtocols(filled);
+  // One shared value map (identical to the flow engine's), so an email composed
+  // here and the same template sent by a flow fill exactly the same way.
+  // {{sender_*}} and the image tags are deferred to the send worker / renderer.
+  const values = { ...contactMergeValues(contact), unsubscribe_url: unsubUrl };
+  return repairDuplicateUrlProtocols(fillMergeTags(template, values));
 }
 
 // Wrap links through track-click ONLY when click tracking is on (off keeps links clean

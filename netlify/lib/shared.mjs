@@ -24,16 +24,45 @@ export function json(body, status = 200) {
 const firstToken = (s) => (s || "").trim().split(/\s+/)[0] || "";
 
 // General-business merge values for a contact row.
+//
+// Every scraped field is usable as a tag: the curated columns first, then
+// anything captured in business_data (so {{ai_relevance_status}}, {{email_count}},
+// {{matched_queries}}, … all just work). Curated names always win.
 export function mergeValues(c) {
+  if (!c) return {};
   const cat = c.primary_category || (Array.isArray(c.categories) ? c.categories[0] : "") || "";
+  const str = (v) => {
+    if (v == null) return "";
+    if (Array.isArray(v)) return v.join(", ");
+    if (typeof v === "object") return "";
+    return String(v);
+  };
+
+  const extra = {};
+  const bd = c.business_data;
+  if (bd && typeof bd === "object" && !Array.isArray(bd)) {
+    for (const [k, v] of Object.entries(bd)) {
+      const key = String(k).toLowerCase().replace(/[^a-z0-9_]/g, "_");
+      if (key) extra[key] = str(v);
+    }
+  }
+
   return {
+    ...extra, // scraped extras first so curated names below take precedence
     business_name: c.name || "",
     name: c.name || "",
     first_name: firstToken(c.name),
     category: cat,
+    categories: Array.isArray(c.categories) ? c.categories.join(", ") : str(c.categories),
     city: c.city || "",
     state: c.state || "",
+    address: c.address || "",
+    zip: c.postal_code || "",
+    postal_code: c.postal_code || "",
+    country: c.country_code || "",
     website: c.website_url || c.domain || "",
+    domain: c.domain || "",
+    maps_url: c.maps_url || "",
     phone: c.phone || "",
     rating: c.rating != null ? String(c.rating) : "",
     review_count: c.review_count != null ? String(c.review_count) : "",
