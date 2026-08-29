@@ -20,6 +20,8 @@ create table if not exists public.image_templates (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+-- Idempotent: re-running this whole file must never error.
+drop trigger if exists trg_image_templates_updated on public.image_templates;
 create trigger trg_image_templates_updated before update on public.image_templates
   for each row execute function public.update_updated_at_column();
 

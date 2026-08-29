@@ -50,13 +50,59 @@ function colorOf(text) {
   return `rgb(${to(c.r)}, ${to(c.g)}, ${to(c.b)})`;
 }
 
+// Photoshop writes PostScript-ish names ("ErasITC-Bold", "Montserrat-SemiBold")
+// while the OS registers friendly families ("Eras Bold ITC", "Montserrat").
+// Score installed families by shared tokens so we use the REAL font instead of
+// silently falling back to Arial and changing how the artwork reads.
+let familyCache = null;
+function installedFamilies() {
+  if (!familyCache) {
+    ensureFonts();
+    try { familyCache = (GlobalFonts.families || []).map((f) => f.family); }
+    catch { familyCache = []; }
+  }
+  return familyCache;
+}
+const tokens = (s) =>
+  String(s || "")
+    .replace(/[-_]/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+const WEIGHT_WORDS = new Set(["bold", "black", "heavy", "semibold", "demi", "medium", "light", "regular", "italic", "oblique", "thin", "book"]);
+
+export function resolveFontFamily(psdName) {
+  const want = tokens(psdName);
+  if (!want.length) return { family: null, exact: false };
+  let best = null, bestScore = 0;
+  for (const fam of installedFamilies()) {
+    const have = tokens(fam);
+    const hits = want.filter((t) => have.includes(t)).length;
+    if (!hits) continue;
+    // Prefer families that match the distinctive (non-weight) words and add no noise.
+    const nameHits = want.filter((t) => !WEIGHT_WORDS.has(t) && have.includes(t)).length;
+    const score = nameHits * 10 + hits - Math.abs(have.length - want.length);
+    if (score > bestScore) { bestScore = score; best = fam; }
+  }
+  const wantedNameTokens = want.filter((t) => !WEIGHT_WORDS.has(t));
+  const exact = !!best && wantedNameTokens.every((t) => tokens(best).includes(t));
+  return { family: best, exact };
+}
+
 function fontOf(text) {
   const name = text?.style?.font?.name || "Arial";
-  // Photoshop names look like "Montserrat-SemiBold" / "Helvetica-Bold".
-  const [family, variant = ""] = name.split("-");
+  const [rawFamily, variant = ""] = name.split("-");
   const v = variant.toLowerCase();
+  const match = resolveFontFamily(name);
   return {
-    family: family.replace(/([a-z])([A-Z])/g, "$1 $2"),
+    // Only trust a CONFIDENT match. A loose one can land on something wilder than
+    // the generic fallback (Montserrat -> "Copperplate Gothic Bold"), which would
+    // silently change how the artwork reads.
+    family: match.exact ? match.family : rawFamily.replace(/([a-z])([A-Z])/g, "$1 $2"),
+    matched: match.exact,
+    suggestion: match.exact ? null : match.family,
     weight: /bold|black|heavy|semibold|demi/.test(v) ? "bold" : "normal",
     style: /italic|oblique/.test(v) ? "italic" : "normal",
     size: Math.round(text?.style?.fontSize || 24),
@@ -89,6 +135,8 @@ export function scanPsd(buffer) {
       sampleText: raw,
       suggestedTag: tagMatch ? tagMatch[1].toLowerCase() : null,
       font: f.raw,
+      resolvedFont: f.family,
+      fontAvailable: f.matched,
       fontSize: f.size,
       color: colorOf(t),
       align: justifyOf(t),

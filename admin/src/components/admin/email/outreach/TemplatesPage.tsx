@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CORE_TAGS } from "./mergeValues";
+import ImageTemplatePicker from "./ImageTemplatePicker";
 import { toast } from "sonner";
 import type { OutreachTemplate } from "./types";
 import { Plus, Pencil, Trash2, FileText, X, Save, Eye, Image as ImageIcon, Loader2 } from "lucide-react";
@@ -69,7 +70,7 @@ export default function TemplatesPage() {
   const [form, setForm] = useState({ name: "", subject: "", body_html: "" });
   const [themeKey, setThemeKey] = useState("kingkong");
   // Send settings for this template — honored by flows, compose and replies.
-  const [settings, setSettings] = useState({ email_format: "html", track_opens: true, track_clicks: false, include_unsubscribe: false, tracking_image_url: "" });
+  const [settings, setSettings] = useState({ email_format: "html", track_opens: true, track_clicks: false, include_unsubscribe: false, tracking_image_url: "", image_template_id: null as string | null });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -85,7 +86,7 @@ export default function TemplatesPage() {
   const openNew = () => {
     setForm({ name: "", subject: "", body_html: "" });
     setThemeKey("kingkong");
-    setSettings({ email_format: "html", track_opens: true, track_clicks: false, include_unsubscribe: false, tracking_image_url: "" });
+    setSettings({ email_format: "html", track_opens: true, track_clicks: false, include_unsubscribe: false, tracking_image_url: "", image_template_id: null });
     setModal({ open: true, editing: null });
   };
 
@@ -99,6 +100,7 @@ export default function TemplatesPage() {
       track_clicks: tt.track_clicks === true,
       include_unsubscribe: tt.include_unsubscribe === true,
       tracking_image_url: (tt.tracking_image_url as string) || "",
+      image_template_id: (tt.image_template_id as string) || null,
     });
     setModal({ open: true, editing: t });
   };
@@ -112,18 +114,28 @@ export default function TemplatesPage() {
     }
     setSaving(true);
     try {
+      // image_template_id only exists once the personalised-image migration is
+      // applied. If it isn't, save the template anyway rather than blocking the
+      // user on an optional feature.
+      const missingImageCol = (m?: string) => /image_template_id/.test(m || "");
+      const base = { name: form.name, subject: form.subject, body_html: form.body_html };
+      const { image_template_id, ...sendSettings } = settings;
+      const full = { ...base, ...sendSettings, image_template_id };
+
       if (modal.editing) {
-        const { error } = await supabase.from("outreach_templates").update({
-          name: form.name, subject: form.subject, body_html: form.body_html,
-          ...settings,
-          updated_at: new Date().toISOString(),
-        } as any).eq("id", modal.editing.id);
+        let { error } = await supabase.from("outreach_templates")
+          .update({ ...full, updated_at: new Date().toISOString() } as any).eq("id", modal.editing.id);
+        if (error && missingImageCol(error.message)) {
+          ({ error } = await supabase.from("outreach_templates")
+            .update({ ...base, ...sendSettings, updated_at: new Date().toISOString() } as any).eq("id", modal.editing.id));
+        }
         if (error) throw error;
         toast.success("Template updated");
       } else {
-        const { error } = await supabase.from("outreach_templates").insert({
-          name: form.name, subject: form.subject, body_html: form.body_html, ...settings,
-        } as any);
+        let { error } = await supabase.from("outreach_templates").insert(full as any);
+        if (error && missingImageCol(error.message)) {
+          ({ error } = await supabase.from("outreach_templates").insert({ ...base, ...sendSettings } as any));
+        }
         if (error) throw error;
         toast.success("Template created");
       }
@@ -366,6 +378,20 @@ export default function TemplatesPage() {
                     </p>
                   </div>
                 )}
+
+                {/* Personalised image: a PSD whose text layers are filled per recipient. */}
+                <div className="mb-1">
+                  <ImageTemplatePicker
+                    value={settings.image_template_id}
+                    onChange={(id) => setSettings((s) => ({ ...s, image_template_id: id }))}
+                    onInsertTag={() => {
+                      setForm((f) => ({ ...f, body_html: `${f.body_html}
+{{dynamic_image}}` }));
+                      toast.success("Added {{dynamic_image}} to the body");
+                    }}
+                  />
+                </div>
+
                 <RichEmailEditor
                   value={form.body_html}
                   onChange={v => setForm(f => ({ ...f, body_html: v }))}
