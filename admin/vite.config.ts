@@ -11,6 +11,16 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },
+  // In dev, /api/* goes to the local mailer (npm run local) instead of Netlify,
+  // so sending, flows and PSD rendering all work with nothing deployed.
+  server: {
+    proxy: {
+      "/api": {
+        target: process.env.LOCAL_API || "http://localhost:8787",
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: path.resolve(__dirname, "../publish/admin"),
     emptyOutDir: true,

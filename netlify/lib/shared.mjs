@@ -55,8 +55,9 @@ export function substituteVars(template, contact, opts = {}) {
   }`;
   out = out.replace(/\{\{\s*unsubscribe_url\s*\}\}/gi, unsub);
   // Drop leftover unknown tags so recipients never see raw {{...}} — but keep
-  // {{sender_*}} and {{tracked_image}}, which the send worker fills afterwards.
-  out = out.replace(/\{\{\s*(?!sender_|tracked_image)[a-z_]+\s*\}\}/gi, "");
+  // {{sender_*}} (filled by the send worker) and the image placeholders
+  // {{tracked_image}} / {{dynamic_image}} (filled by the local renderer).
+  out = out.replace(/\{\{\s*(?!sender_|tracked_image|dynamic_image)[a-z_]+\s*\}\}/gi, "");
   return out;
 }
 

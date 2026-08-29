@@ -15,8 +15,11 @@ export default async () => {
   await sb.from("email_queue").update({ status: "pending" })
     .eq("status", "sending").lte("scheduled_for", now);
 
+  // Never send a row whose personalised image hasn't been drawn yet — the local
+  // renderer flips render_status to 'done' (and rewrites the body) first.
   const { data: items } = await sb.from("email_queue")
     .select("*").eq("status", "pending").lte("scheduled_for", now)
+    .or("render_status.is.null,render_status.eq.done")
     .order("scheduled_for", { ascending: true }).limit(BATCH);
   if (!items?.length) return json({ processed: 0 });
 

@@ -11,6 +11,7 @@ mkdirSync(publish, { recursive: true });
 // Directories/files at the repo root that are NOT part of the static site.
 const SKIP = new Set([
   "publish", "admin", "netlify", "scripts", "node_modules", "supabase",
+  "tools", // local-only PSD renderer + mailer; never published
   ".git", ".github", ".netlify",
   "package.json", "package-lock.json", "bun.lock", "netlify.toml",
   ".gitignore", "DEPLOY-SECRETS.txt", "README.md",

@@ -9,7 +9,11 @@
     "//build": "Git-connected Netlify build: build the SPA + assemble static. Netlify bundles netlify/functions itself.",
     "build": "npm run build:admin && npm run assemble",
     "//package": "Drag-and-drop build: clean, build SPA, bundle functions self-contained, assemble a no-build publish/ folder to drop on Netlify.",
-    "package": "node scripts/clean.mjs && npm run build:admin && npm run bundle:functions && npm run assemble"
+    "package": "node scripts/clean.mjs && npm run build:admin && npm run bundle:functions && npm run assemble",
+    "//local": "Run the whole mailer on this machine: PSD renderer + /api/* + (optional) workers.",
+    "local": "node tools/local/server.mjs",
+    "//dev": "Local dashboard (Vite) — proxies /api/* to the local mailer on :8787.",
+    "dev": "cd admin && npm run dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.2",

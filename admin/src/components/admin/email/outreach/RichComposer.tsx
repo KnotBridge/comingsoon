@@ -127,10 +127,23 @@ interface Props {
   sender?: { name?: string; email?: string };
 }
 
+const PLAIN_PREF_KEY = "rnq.composer.plainText";
+
 export default function RichComposer({ compact, sending, placeholder, onSend, contact, onSubject, sender }: Props) {
   const editorRef = useRef<HTMLDivElement | null>(null);
+  // Plain mode uses a REAL textarea, not the contenteditable: it's the only way the
+  // recipient gets back the exact line breaks and blank lines that were typed
+  // (contenteditable turns empty lines into <div><br></div> and innerText collapses them).
+  const plainRef = useRef<HTMLTextAreaElement | null>(null);
+  const [plainBody, setPlainBody] = useState("");
   const [mode, setMode] = useState<"write" | "template">("write");
-  const [plainText, setPlainText] = useState(false); // send as raw text, no HTML wrapper
+  // Remembered, so "I always write plain" stays on between replies.
+  const [plainText, setPlainText] = useState<boolean>(() => {
+    try { return localStorage.getItem(PLAIN_PREF_KEY) === "true"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(PLAIN_PREF_KEY, String(plainText)); } catch { /* ignore */ }
+  }, [plainText]);
   const [styleKey, setStyleKey] = useState<string>("kingkong");
   const [styleMenu, setStyleMenu] = useState(false);
   const [sigOpen, setSigOpen] = useState(false);
@@ -185,7 +198,34 @@ export default function RichComposer({ compact, sending, placeholder, onSend, co
   // ── Write mode helpers ──
   const exec = (cmd: string, val?: string) => { editorRef.current?.focus(); document.execCommand(cmd, false, val); };
   const addLink = () => { const url = window.prompt("Link URL (https://…):"); if (url) exec("createLink", /^https?:\/\//i.test(url) ? url : `https://${url}`); };
-  const insertSig = () => { editorRef.current?.focus(); document.execCommand("insertHTML", false, `<br><br>${sigToHtml(sig)}`); };
+  const insertSig = () => {
+    if (plainText) {
+      // Plain mode: append the signature as literal text, keeping its own line breaks.
+      setPlainBody((b) => (b.replace(/\s+$/, "") + "\n\n" + sig).replace(/^\n+/, ""));
+      plainRef.current?.focus();
+      return;
+    }
+    editorRef.current?.focus();
+    document.execCommand("insertHTML", false, `<br><br>${sigToHtml(sig)}`);
+  };
+
+  // Switching modes carries the draft across so nothing typed is lost.
+  const togglePlain = () => {
+    setPlainText((on) => {
+      if (!on) {
+        // rich -> plain: take the visible text (best effort) as the starting point.
+        const t = editorRef.current?.innerText ?? "";
+        setPlainBody((prev) => prev || t);
+      } else {
+        // plain -> rich: re-inject the text with real line breaks preserved.
+        const html = (plainBody || "")
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          .split("\n").map((l) => (l.trim() === "" ? "<div><br></div>" : `<div>${l}</div>`)).join("");
+        window.setTimeout(() => { if (editorRef.current && html) editorRef.current.innerHTML = html; }, 0);
+      }
+      return !on;
+    });
+  };
 
   const handleSend = async () => {
     if (mode === "template") {
@@ -203,13 +243,13 @@ export default function RichComposer({ compact, sending, placeholder, onSend, co
       setPicked(null); setFields({}); setMode("write");
       return;
     }
-    // Plain text: send exactly what's typed, no HTML wrapper. innerText keeps the line
-    // breaks the writer put in; the worker sends it as text/plain.
+    // Plain text: send byte-for-byte what's in the textarea — every line break and
+    // blank line survives to the recipient (the worker sends it as text/plain).
     if (plainText) {
-      const text = editorRef.current?.innerText || "";
+      const text = plainBody;
       if (!text.trim()) return;
       await onSend(text, { plainText: true });
-      if (editorRef.current) editorRef.current.innerHTML = "";
+      setPlainBody("");
       return;
     }
     const raw = editorRef.current?.innerHTML || "";
@@ -232,33 +272,40 @@ export default function RichComposer({ compact, sending, placeholder, onSend, co
       <div className="flex items-center gap-0.5 px-1.5 py-1 border-b border-border flex-wrap">
         {mode === "write" ? (
           <>
-            <Tool onClick={() => exec("bold")} title="Bold"><Bold className="w-3.5 h-3.5" /></Tool>
-            <Tool onClick={() => exec("italic")} title="Italic"><Italic className="w-3.5 h-3.5" /></Tool>
-            <Tool onClick={() => exec("underline")} title="Underline"><Underline className="w-3.5 h-3.5" /></Tool>
-            <span className="w-px h-4 bg-border mx-0.5" />
-            <Tool onClick={() => exec("insertUnorderedList")} title="Bulleted list"><List className="w-3.5 h-3.5" /></Tool>
-            <Tool onClick={() => exec("insertOrderedList")} title="Numbered list"><ListOrdered className="w-3.5 h-3.5" /></Tool>
-            <Tool onClick={addLink} title="Insert link"><Link2 className="w-3.5 h-3.5" /></Tool>
-            <span className="w-px h-4 bg-border mx-0.5" />
-            <div className="relative">
-              <button type="button" onClick={() => setStyleMenu((v) => !v)} className="inline-flex items-center gap-1 text-[11px] px-1.5 h-7 rounded hover:bg-muted text-muted-foreground hover:text-foreground">
-                {style.name}<ChevronDown className="w-3 h-3" />
-              </button>
-              {styleMenu && (
-                <div className="absolute z-30 mt-1 bg-popover border border-border rounded-md shadow-lg py-1 min-w-[130px]">
-                  {Object.entries(EMAIL_STYLES).map(([k, s]) => (
-                    <button key={k} onClick={() => { setStyleKey(k); setStyleMenu(false); }} className={cn("w-full text-left px-2.5 py-1 text-xs hover:bg-muted", k === styleKey && "font-semibold text-primary")}>{s.name}</button>
-                  ))}
+            {/* Rich-only tools. In plain mode they'd be a lie — the email is sent as
+                literal text — so they're hidden rather than shown doing nothing. */}
+            {!plainText && (
+              <>
+                <Tool onClick={() => exec("bold")} title="Bold"><Bold className="w-3.5 h-3.5" /></Tool>
+                <Tool onClick={() => exec("italic")} title="Italic"><Italic className="w-3.5 h-3.5" /></Tool>
+                <Tool onClick={() => exec("underline")} title="Underline"><Underline className="w-3.5 h-3.5" /></Tool>
+                <span className="w-px h-4 bg-border mx-0.5" />
+                <Tool onClick={() => exec("insertUnorderedList")} title="Bulleted list"><List className="w-3.5 h-3.5" /></Tool>
+                <Tool onClick={() => exec("insertOrderedList")} title="Numbered list"><ListOrdered className="w-3.5 h-3.5" /></Tool>
+                <Tool onClick={addLink} title="Insert link"><Link2 className="w-3.5 h-3.5" /></Tool>
+                <span className="w-px h-4 bg-border mx-0.5" />
+                <div className="relative">
+                  <button type="button" onClick={() => setStyleMenu((v) => !v)} className="inline-flex items-center gap-1 text-[11px] px-1.5 h-7 rounded hover:bg-muted text-muted-foreground hover:text-foreground">
+                    {style.name}<ChevronDown className="w-3 h-3" />
+                  </button>
+                  {styleMenu && (
+                    <div className="absolute z-30 mt-1 bg-popover border border-border rounded-md shadow-lg py-1 min-w-[130px]">
+                      {Object.entries(EMAIL_STYLES).map(([k, s]) => (
+                        <button key={k} onClick={() => { setStyleKey(k); setStyleMenu(false); }} className={cn("w-full text-left px-2.5 py-1 text-xs hover:bg-muted", k === styleKey && "font-semibold text-primary")}>{s.name}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
             <Tool onClick={insertSig} title="Insert signature"><PenLine className="w-3.5 h-3.5" /></Tool>
             <button type="button" onClick={() => setSigOpen((v) => !v)} className="text-[10px] text-muted-foreground hover:text-foreground px-1">edit sig</button>
-            <button type="button" onClick={() => setPlainText((v) => !v)}
-              title="Plain text: send exactly what you type, no formatting or HTML"
+            <button type="button" onClick={togglePlain}
+              title="Plain text: send exactly what you type — every line break and blank line kept, no HTML"
               className={cn("text-[10px] px-1.5 h-6 rounded border transition-colors", plainText ? "border-primary text-primary bg-primary/5 font-medium" : "border-border text-muted-foreground hover:text-foreground")}>
               Plain
             </button>
+            {plainText && <span className="text-[10px] text-muted-foreground">exact spacing, no HTML</span>}
             <Tool onClick={() => setMode("template")} title="Use a template"><FileText className="w-3.5 h-3.5" /></Tool>
           </>
         ) : (
@@ -289,18 +336,33 @@ export default function RichComposer({ compact, sending, placeholder, onSend, co
       )}
 
       {mode === "write" ? (
-        <div
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          data-ph={placeholder || "Write your email…"}
-          className={cn(
-            "px-3 py-2 outline-none overflow-y-auto break-words empty:before:content-[attr(data-ph)] empty:before:text-muted-foreground/50",
-            "[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-6 [&_ol]:pl-6 [&_ul]:my-1 [&_ol]:my-1 [&_a]:text-blue-600 [&_a]:underline",
-            compact ? "min-h-[80px] max-h-[240px]" : "min-h-[220px] max-h-[440px]",
-          )}
-          style={{ fontFamily: style.fontFamily, fontSize: style.fontSize, color: style.color, lineHeight: style.lineHeight }}
-        />
+        plainText ? (
+          <textarea
+            ref={plainRef}
+            value={plainBody}
+            onChange={(e) => setPlainBody(e.target.value)}
+            placeholder={placeholder || "Write your email…"}
+            spellCheck
+            className={cn(
+              "w-full px-3 py-2 outline-none resize-y bg-background text-foreground placeholder:text-muted-foreground/50",
+              "whitespace-pre-wrap font-sans text-sm leading-relaxed",
+              compact ? "min-h-[110px] max-h-[280px]" : "min-h-[240px] max-h-[460px]",
+            )}
+          />
+        ) : (
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            data-ph={placeholder || "Write your email…"}
+            className={cn(
+              "px-3 py-2 outline-none overflow-y-auto break-words empty:before:content-[attr(data-ph)] empty:before:text-muted-foreground/50",
+              "[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-6 [&_ol]:pl-6 [&_ul]:my-1 [&_ol]:my-1 [&_a]:text-blue-600 [&_a]:underline",
+              compact ? "min-h-[80px] max-h-[240px]" : "min-h-[220px] max-h-[440px]",
+            )}
+            style={{ fontFamily: style.fontFamily, fontSize: style.fontSize, color: style.color, lineHeight: style.lineHeight }}
+          />
+        )
       ) : (
         <div className="flex flex-col">
           {!picked ? (

@@ -1,4 +1,4 @@
-import { admin, json, substituteVars } from "../lib/shared.mjs";
+import { admin, json, substituteVars, mergeValues } from "../lib/shared.mjs";
 
 const NODE_GUARD = 50;
 const ADVANCE_LIMIT = 100;
@@ -176,7 +176,7 @@ async function queueEmail(sb, enr, node, senderId) {
   let bodyHtml = node.config?.body_html || node.config?.bodyHtml || "";
   const templateId = node.config?.templateId;
   let trackOpens = true, includeUnsub = true, emailFormat = node.config?.email_format || "html";
-  let trackingImageUrl = null;
+  let trackingImageUrl = null, imageTemplateId = null;
   if (templateId) {
     const { data: tpl } = await sb.from("outreach_templates").select("*").eq("id", templateId).maybeSingle();
     if (tpl) {
@@ -184,6 +184,7 @@ async function queueEmail(sb, enr, node, senderId) {
       trackOpens = tpl.track_opens !== false; includeUnsub = tpl.include_unsubscribe !== false;
       emailFormat = tpl.email_format || "html"; // carry plain vs html through to the send worker
       trackingImageUrl = tpl.tracking_image_url || null;
+      imageTemplateId = tpl.image_template_id || null;
     }
   }
   if (!subject && !bodyHtml) return null; // misconfigured node — nothing to send
@@ -193,6 +194,32 @@ async function queueEmail(sb, enr, node, senderId) {
     const { data } = await sb.from("outreach_contacts").select("*").eq("id", enr.contact_id).maybeSingle();
     if (data) contact = data;
   }
+  // Personalised artwork: freeze this recipient's strings now, and hold the row
+  // until the local renderer has drawn the PNG (the sender skips 'pending').
+  let renderStatus = null, renderSpec = null;
+  if (imageTemplateId) {
+    const { data: img } = await sb.from("image_templates")
+      .select("id, mapping").eq("id", imageTemplateId).maybeSingle();
+    if (img?.mapping && Object.keys(img.mapping).length) {
+      const sender = senderId
+        ? (await sb.from("email_sender_accounts").select("from_name, from_email").eq("id", senderId).maybeSingle()).data
+        : null;
+      const full = (sender?.from_name || "").trim();
+      const vals = {
+        ...mergeValues(contact),
+        sender_name: full,
+        sender_first_name: full.split(/\s+/)[0] || "",
+        sender_email: sender?.from_email || "",
+      };
+      const values = {};
+      for (const [layerId, tag] of Object.entries(img.mapping)) {
+        if (tag) values[layerId] = vals[tag] ?? "";
+      }
+      renderStatus = "pending";
+      renderSpec = { imageTemplateId, values };
+    }
+  }
+
   const { data: row, error } = await sb.from("email_queue").insert({
     queue_type: "outreach", outreach_contact_id: enr.contact_id || null,
     flow_id: enr.flow_id, flow_node_id: node.id, sender_account_id: senderId,
@@ -200,6 +227,7 @@ async function queueEmail(sb, enr, node, senderId) {
     subject: substituteVars(subject, contact), html_body: substituteVars(bodyHtml, contact),
     email_format: emailFormat, tracking_image_url: trackingImageUrl,
     track_opens: trackOpens, include_unsubscribe: includeUnsub, status: "pending",
+    render_status: renderStatus, render_spec: renderSpec,
   }).select("id").single();
   if (error) { console.error("queueEmail", error.message); return null; }
 

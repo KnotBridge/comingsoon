@@ -1,0 +1,16 @@
+{
+  "name": "rnq-local-tools",
+  "private": true,
+  "type": "module",
+  "description": "Local-only tooling: PSD personalisation engine + local mail runner. Never deployed.",
+  "scripts": {
+    "test:psd": "node render/test-psd.mjs"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^1.0.8",
+    "@supabase/supabase-js": "^2.57.2",
+    "ag-psd": "^31.0.2",
+    "express": "^5.2.1",
+    "multer": "^2.3.0"
+  }
+}

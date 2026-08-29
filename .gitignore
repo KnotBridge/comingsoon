@@ -6,3 +6,8 @@ admin/dist/
 .env.*
 .netlify/
 DEPLOY-SECRETS.txt
+tools/node_modules/
+tools/render/fonts/
+tools/render/*.png
+tools/render/*.psd
+.env.local
