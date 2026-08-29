@@ -352,53 +352,67 @@ export default function TemplatesPage() {
                     </label>
                   ))}
                 </div>
-                {/* Tracking image — a real, visible image that doubles as the open beacon. */}
-                {(
-                  <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 mb-1 space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground shrink-0">Tracking image</span>
+                {/* Tracking image. Two ways to supply it: a fixed image URL, or a
+                    source file (PSD) rendered per recipient. Both land at the same
+                    {{tracked_image}} tag with the same sizing. */}
+                <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 mb-1 space-y-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground shrink-0">Tracking image</span>
+                    <label className="inline-flex items-center gap-1.5 text-[11px] cursor-pointer select-none">
                       <input
-                        type="url"
-                        value={settings.tracking_image_url}
-                        onChange={(e) => setSettings(s => ({ ...s, tracking_image_url: e.target.value }))}
-                        placeholder="Paste an image URL, or pick from your library"
-                        className="flex-1 h-8 rounded-md border border-border bg-background px-2 text-xs min-w-0"
+                        type="checkbox"
+                        checked={!!settings.image_template_id}
+                        onChange={(e) => {
+                          if (!e.target.checked) setSettings((s) => ({ ...s, image_template_id: null }));
+                          else setSettings((s) => ({ ...s, image_template_id: s.image_template_id || "" }));
+                        }}
+                        className="rounded"
                       />
-                      <MediaPicker onPick={(url) => setSettings(s => ({ ...s, tracking_image_url: url }))} />
-                    </div>
-                    {settings.tracking_image_url && (
-                      <div className="flex items-center gap-2">
-                        <img src={settings.tracking_image_url} alt="" className="h-10 rounded border border-border/60 object-cover" />
-                        <button type="button" className="text-[11px] text-muted-foreground underline" onClick={() => setSettings(s => ({ ...s, tracking_image_url: "" }))}>Remove</button>
-                      </div>
-                    )}
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                      Put{" "}
-                      <code className="bg-muted px-1 rounded cursor-pointer" title="Copy"
-                        onClick={() => { navigator.clipboard?.writeText("{{tracked_image}}"); toast.success("Copied {{tracked_image}}"); }}>{"{{tracked_image}}"}</code>{" "}
-      exactly where the image should appear. With <b>Track opens</b> on, it renders as a real picture the recipient sees and doubles as the open beacon (instead of the invisible 1x1 pixel). It defaults to 480px wide; write <code className="bg-muted px-1 rounded">{"{{tracked_image:320}}"}</code> to set a different max width in px. In <b>plain-text</b> mode the text stays plain and the image is placed at the tag's spot inside the small HTML part the tracker already adds. Any image URL works, including one hosted elsewhere. Leave this empty to keep the invisible pixel.
-                    </p>
+                      <span className={settings.image_template_id ? "text-foreground font-medium" : "text-muted-foreground"}>
+                        Source file (PSD) — personalised per recipient
+                      </span>
+                    </label>
                   </div>
-                )}
 
-                {/* Personalised image: a PSD whose text layers are filled per recipient. */}
-                <div className="mb-1">
-                  <ImageTemplatePicker
-                    value={settings.image_template_id}
-                    onChange={(id) => setSettings((s) => ({ ...s, image_template_id: id }))}
-                    body={form.body_html}
-                    emailFormat={settings.email_format}
-                    onPreviewUrl={setDynamicImageUrl}
-                    onFixFormat={() => {
-                      setSettings((s) => ({ ...s, email_format: "html" }));
-                      toast.success("Switched to Rich (HTML) so the image can show");
-                    }}
-                    onInsertTag={() => {
-                      setForm((f) => ({ ...f, body_html: `${f.body_html}
-{{dynamic_image}}` }));
-                      toast.success("Added {{dynamic_image}} to the body");
-                    }}
-                  />
+                  {settings.image_template_id === null ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="url"
+                          value={settings.tracking_image_url}
+                          onChange={(e) => setSettings(s => ({ ...s, tracking_image_url: e.target.value }))}
+                          placeholder="Paste an image URL, or pick from your library"
+                          className="flex-1 h-8 rounded-md border border-border bg-background px-2 text-xs min-w-0"
+                        />
+                        <MediaPicker onPick={(url) => setSettings(s => ({ ...s, tracking_image_url: url }))} />
+                      </div>
+                      {settings.tracking_image_url && (
+                        <div className="flex items-center gap-2">
+                          <img src={settings.tracking_image_url} alt="" className="h-10 rounded border border-border/60 object-cover" />
+                          <button type="button" className="text-[11px] text-muted-foreground underline" onClick={() => setSettings(s => ({ ...s, tracking_image_url: "" }))}>Remove</button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <ImageTemplatePicker
+                      value={settings.image_template_id || null}
+                      onChange={(id) => setSettings((s) => ({ ...s, image_template_id: id }))}
+                      body={form.body_html}
+                      onPreviewUrl={setDynamicImageUrl}
+                      onInsertTag={() => {
+                        setForm((f) => ({ ...f, body_html: `${f.body_html}
+{{tracked_image}}` }));
+                        toast.success("Added {{tracked_image}} to the body");
+                      }}
+                    />
+                  )}
+
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Put{" "}
+                    <code className="bg-muted px-1 rounded cursor-pointer" title="Copy"
+                      onClick={() => { navigator.clipboard?.writeText("{{tracked_image}}"); toast.success("Copied {{tracked_image}}"); }}>{"{{tracked_image}}"}</code>{" "}
+                    exactly where the image should appear. It defaults to 480px wide; write <code className="bg-muted px-1 rounded">{"{{tracked_image:320}}"}</code> for a different max width. This works in <b>plain text</b> too: the words stay plain and the picture is placed at the tag's spot. With <b>Track opens</b> on it also doubles as the open beacon. Leave everything empty to keep the invisible pixel.
+                  </p>
                 </div>
 
                 <RichEmailEditor

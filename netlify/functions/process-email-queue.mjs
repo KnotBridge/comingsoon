@@ -105,36 +105,53 @@ export default async () => {
 
     try {
       const subject = applySenderVars(item.subject, sender);
-      let rawBody = applySenderVars(item.html_body, sender);
+      const rawBody = applySenderVars(item.html_body, sender);
 
-      // {{tracked_image}} / {{tracked_image:width}} -> the real image, or nothing.
-      // Without this the literal tag is delivered to the recipient.
-      rawBody = rawBody.replace(/\{\{\s*tracked_image(?::(\d+))?\s*\}\}/gi, (_m, w) => {
-        if (!item.tracking_image_url) return "";
+      // ONE image tag, two possible sources:
+      //   render_url          — this recipient's own PSD render (personalised)
+      //   tracking_image_url  — a fixed image you uploaded
+      // {{dynamic_image}} is accepted as an alias so older bodies keep working.
+      // Width is controlled the same way as before: {{tracked_image:320}}.
+      const imageUrl = item.render_url || item.tracking_image_url || null;
+      const IMAGE_TAG = /\{\{\s*(?:tracked_image|dynamic_image)(?::(\d+))?\s*\}\}/gi;
+      const imgHtml = (w) => {
+        if (!imageUrl) return "";
         const width = w ? Math.min(Math.max(parseInt(w, 10), 40), 1200) : 480;
-        return `<img src="${item.tracking_image_url}" alt="" style="width:100%;max-width:${width}px;height:auto;display:block;border:0;margin:8px 0;" />`;
-      });
-      // Any image tag still unresolved (e.g. the renderer never ran) is dropped
-      // rather than shipped raw.
-      rawBody = rawBody.replace(/\{\{\s*dynamic_image\s*\}\}/gi, "");
+        return `<img src="${imageUrl}" alt="" style="width:100%;max-width:${width}px;height:auto;display:block;border:0;margin:8px 0;" />`;
+      };
 
       const isPlain = item.email_format === "plain";
       let html, text;
       if (isPlain) {
-        // Plain text: send the raw text (newlines/blank lines intact) as the text
-        // part, and a pre-wrap HTML mirror only when we need to carry the open pixel.
-        text = rawBody;
-        if (item.track_opens !== false) {
-          html = injectTracking(plainTextToHtml(rawBody), item.id, item.tracking_token, {
-            trackOpens: true, trackClicks: false,
-          });
+        // Plain text keeps its exact spacing. The TEXT part must never contain
+        // markup, so the tag is simply removed there; the HTML mirror places the
+        // real picture at that same spot. This is what makes a plain-looking
+        // email still show an image, exactly as before.
+        text = rawBody.replace(IMAGE_TAG, "").replace(/\n{3,}/g, "\n\n").trim();
+        const needsHtml = imageUrl || item.track_opens !== false;
+        if (needsHtml) {
+          const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          // Rebuild the body piece by piece so the image sits where the tag was.
+          let mirror = "", last = 0, m;
+          IMAGE_TAG.lastIndex = 0;
+          while ((m = IMAGE_TAG.exec(rawBody)) !== null) {
+            mirror += esc(rawBody.slice(last, m.index)) + imgHtml(m[1]);
+            last = m.index + m[0].length;
+          }
+          mirror += esc(rawBody.slice(last));
+          html = injectTracking(
+            `<div style="white-space:pre-wrap;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1a1a1a;word-wrap:break-word;">${mirror}</div>`,
+            item.id, item.tracking_token,
+            { trackOpens: item.track_opens !== false, trackClicks: false },
+          );
         }
       } else {
-        html = injectTracking(rawBody, item.id, item.tracking_token, {
+        html = injectTracking(rawBody.replace(IMAGE_TAG, (_m, w) => imgHtml(w)), item.id, item.tracking_token, {
           trackOpens: item.track_opens !== false, trackClicks: true,
         });
         text = htmlToText(html);
       }
+
       const headers = {};
       if (item.include_unsubscribe !== false) {
         const unsub = `${base}/unsubscribe?email=${encodeURIComponent(item.recipient_email)}${item.outreach_campaign_id ? `&cid=${item.outreach_campaign_id}` : ""}`;

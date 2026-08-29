@@ -162,7 +162,7 @@ async function renderAndStore(tpl, values, tag = "r") {
  */
 async function processRenderQueue() {
   const { data: rows } = await sb.from("email_queue")
-    .select("id, html_body, render_spec")
+    .select("id, render_spec")
     .eq("render_status", "pending").limit(25);
   if (!rows?.length) return 0;
 
@@ -173,13 +173,11 @@ async function processRenderQueue() {
       const tpl = await getTemplate(spec.imageTemplateId);
       if (!tpl) throw new Error("image template missing");
       const url = await renderAndStore(tpl, spec.values || {});
-      const imgTag = `<img src="${url}" alt="" width="${tpl.width || 600}" style="display:block;border:0;max-width:100%;height:auto;" />`;
-      const body = String(row.html_body || "")
-        .replace(/\{\{\s*dynamic_image\s*\}\}/gi, imgTag)
-        .replace(/\{\{\s*tracked_image(?::\d+)?\s*\}\}/gi, imgTag);
-      await sb.from("email_queue").update({
-        html_body: body, render_url: url, render_status: "done",
-      }).eq("id", row.id);
+      // Only record the URL. The send worker places the picture at the
+      // {{tracked_image}} tag, so plain-text emails keep their exact spacing and
+      // the width control ({{tracked_image:320}}) still applies — the same
+      // behaviour as an image you upload yourself.
+      await sb.from("email_queue").update({ render_url: url, render_status: "done" }).eq("id", row.id);
       done++;
     } catch (e) {
       console.error(`[render ${row.id}]`, e.message);

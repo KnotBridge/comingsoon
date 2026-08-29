@@ -45,12 +45,11 @@ interface Props {
   /** The email body + format, so the checklist can tell you what's still missing. */
   body?: string;
   emailFormat?: string;
-  onFixFormat?: () => void;             // switch the template to HTML
   /** Bubble the sample render up so the email preview can show it. */
   onPreviewUrl?: (url: string | null) => void;
 }
 
-export default function ImageTemplatePicker({ value, onChange, onInsertTag, body = "", emailFormat = "html", onFixFormat, onPreviewUrl }: Props) {
+export default function ImageTemplatePicker({ value, onChange, onInsertTag, body = "", onPreviewUrl }: Props) {
   const [templates, setTemplates] = useState<ImageTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -280,10 +279,8 @@ export default function ImageTemplatePicker({ value, onChange, onInsertTag, body
           <Checklist
             picked={picked}
             body={body}
-            emailFormat={emailFormat}
             rendererUp={rendererUp}
             onInsertTag={onInsertTag}
-            onFixFormat={onFixFormat}
           />
         </div>
       )}
@@ -295,20 +292,17 @@ export default function ImageTemplatePicker({ value, onChange, onInsertTag, body
 // Each failing row says what to do about it, so a send never silently produces
 // an email with no picture.
 function Checklist({
-  picked, body, emailFormat, rendererUp, onInsertTag, onFixFormat,
+  picked, body, rendererUp, onInsertTag,
 }: {
   picked: ImageTemplate;
   body: string;
-  emailFormat: string;
   rendererUp: boolean | null;
   onInsertTag?: () => void;
-  onFixFormat?: () => void;
 }) {
   const layers = picked.layers || [];
   const mapped = layers.filter((l) => picked.mapping?.[l.id]);
   const missingFonts = layers.filter((l) => !l.fontAvailable);
-  const hasTag = /\{\{\s*(dynamic_image|tracked_image)(?::\d+)?\s*\}\}/i.test(body);
-  const isPlain = emailFormat === "plain";
+  const hasTag = /\{\{\s*(tracked_image|dynamic_image)(?::\d+)?\s*\}\}/i.test(body);
 
   const rows: { ok: boolean; label: string; hint?: string; action?: { label: string; run: () => void } }[] = [
     {
@@ -324,14 +318,8 @@ function Checklist({
     {
       ok: hasTag,
       label: "Image tag in the email body",
-      hint: "The body needs {{dynamic_image}} where the picture goes.",
+      hint: "The body needs {{tracked_image}} where the picture goes. Works in plain text too.",
       action: onInsertTag && !hasTag ? { label: "Insert it", run: onInsertTag } : undefined,
-    },
-    {
-      ok: !isPlain,
-      label: "Format is Rich (HTML)",
-      hint: "Plain-text email cannot show a picture — switch to Rich (HTML).",
-      action: onFixFormat && isPlain ? { label: "Switch to HTML", run: onFixFormat } : undefined,
     },
     {
       ok: missingFonts.length === 0,
