@@ -186,13 +186,41 @@ async function processRenderQueue() {
       }).eq("id", row.id);
     }
   }
-  if (done) console.log(`[render] personalised ${done} image(s)`);
+  if (done) {
+    console.log(`[render] personalised ${done} image(s) — releasing to the sender`);
+    // The row was skipped by the send worker while it had no art. Now it has
+    // art, so drain immediately instead of leaving it to sit as "pending".
+    try {
+      const fn = await loadFn("process-email-queue");
+      if (fn) {
+        const r = await fn(new Request(`http://localhost:${PORT}/api/process-email-queue`, {
+          method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+        }));
+        console.log("[render] send ->", await r.text());
+      }
+    } catch (e) { console.error("[render] send kick failed:", e.message); }
+  }
   return done;
 }
 
 // ── Timers ──────────────────────────────────────────────────────────────────
 const RENDER_MS = Number(process.env.RENDER_INTERVAL_MS || 5000);
 setInterval(() => { processRenderQueue().catch((e) => console.error("[render loop]", e.message)); }, RENDER_MS);
+
+// Always keep the send queue moving while the local mailer is up — pressing
+// Send in the dashboard should never leave an email sitting in "pending".
+const drain = async () => {
+  try {
+    const fn = await loadFn("process-email-queue");
+    if (!fn) return;
+    const r = await fn(new Request(`http://localhost:${PORT}/api/process-email-queue`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: "{}",
+    }));
+    const txt = await r.text();
+    if (!/"processed":0/.test(txt)) console.log("[queue]", txt);
+  } catch (e) { console.error("[queue]", e.message); }
+};
+setInterval(drain, 30_000);
 
 if (process.env.LOCAL_WORKERS === "1") {
   const tick = async (name, body) => {
@@ -207,9 +235,8 @@ if (process.env.LOCAL_WORKERS === "1") {
     } catch (e) { console.error(`[${name}]`, e.message); }
   };
   setInterval(() => tick("process-email-flows"), 60_000);
-  setInterval(() => tick("process-email-queue"), 60_000);
   setInterval(() => tick("fetch-imap-replies"), 5 * 60_000);
-  console.log("local workers ON — flows + queue every 60s, IMAP every 5 min");
+  console.log("local workers ON — flows every 60s, IMAP every 5 min (queue drains every 30s regardless)");
 }
 
 app.listen(PORT, () => {
