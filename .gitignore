@@ -11,3 +11,6 @@ tools/render/fonts/
 tools/render/*.png
 tools/render/*.psd
 .env.local
+tools/*.csv
+tools/peek*.mjs
+tools/diag.mjs
