@@ -28,6 +28,13 @@ export function ensureFonts(extraDir) {
   fontsReady = true;
 }
 
+// Tags a layer name can auto-map to. Mirrors CORE_TAGS/SENDER_TAGS in the UI.
+const KNOWN_TAGS = new Set([
+  "business_name", "name", "first_name", "category", "city", "state", "address",
+  "zip", "postal_code", "website", "domain", "phone", "rating", "review_count",
+  "maps_url", "email", "sender_name", "sender_first_name", "sender_email",
+]);
+
 const isTextLayer = (l) => !!(l && l.text && typeof l.text.text === "string");
 
 /** Depth-first walk of the layer tree, bottom layer first (PSD storage order). */
@@ -128,12 +135,15 @@ export function scanPsd(buffer) {
     const f = fontOf(t);
     const raw = (t.text || "").replace(/\r/g, "\n").trim();
     const tagMatch = raw.match(/\{\{\s*([a-z0-9_]+)\s*\}\}/i);
+    // A layer literally called "first_name" / "sender_name" is self-describing,
+    // so map it without making the user pick from a dropdown.
+    const byName = String(e.layer.name || "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
     layers.push({
       id: layerId(e, i),
       name: e.layer.name || `Text ${i}`,
       path: e.path.join(" / "),
       sampleText: raw,
-      suggestedTag: tagMatch ? tagMatch[1].toLowerCase() : null,
+      suggestedTag: tagMatch ? tagMatch[1].toLowerCase() : (KNOWN_TAGS.has(byName) ? byName : null),
       font: f.raw,
       resolvedFont: f.family,
       fontAvailable: f.matched,
@@ -234,8 +244,17 @@ export function renderPsd(buffer, values = {}, opts = {}) {
     const baseline = centreY + (ascent - descent) / 2;
 
     ctx.textBaseline = "alphabetic";
-    ctx.textAlign = align;
-    const x = align === "center" ? (boxLeft + boxRight) / 2 : align === "right" ? boxRight : boxLeft;
+    // Single-line replacements (a name) are centred on the original text's own
+    // centre, so a longer or shorter name grows symmetrically instead of running
+    // off one side — which is what keeps it inside a mug, badge or label.
+    const singleLine = !replacement.includes("\n");
+    if (ink && singleLine) {
+      ctx.textAlign = "center";
+      var x = (boxLeft + boxRight) / 2;
+    } else {
+      ctx.textAlign = align;
+      var x = align === "center" ? (boxLeft + boxRight) / 2 : align === "right" ? boxRight : boxLeft;
+    }
     ctx.fillText(replacement, x, baseline);
     ctx.restore();
   });
