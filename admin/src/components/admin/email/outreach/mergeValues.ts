@@ -37,11 +37,20 @@ export function contactMergeValues(c: Record<string, unknown> | null | undefined
   }
 
   const name = str(c.name);
+  // Person-level lists carry the owner's name + company in business_data, so
+  // {{first_name}} is the person and {{business_name}} the company.
+  const bdFirst = str(bd?.first_name).trim();
+  const bdLast = str(bd?.last_name).trim();
+  const bdCompany = str(bd?.company_name).trim();
   return {
     ...extra,
-    business_name: name,
+    business_name: bdCompany || name,
+    company: bdCompany || name,
     name,
-    first_name: firstToken(name),
+    first_name: bdFirst || firstToken(name),
+    last_name: bdLast,
+    full_name: [bdFirst, bdLast].filter(Boolean).join(" ") || name,
+    job_title: str(bd?.job_title),
     category,
     categories: Array.isArray(cats) ? cats.join(", ") : str(cats),
     city: str(c.city),
@@ -78,8 +87,10 @@ export function fillMergeTags(template: string, values: MergeMap): string {
 
 /** The tags offered in the pickers, in the order they're shown. */
 export const CORE_TAGS: { tag: string; desc: string }[] = [
-  { tag: "business_name", desc: "Business name" },
-  { tag: "first_name", desc: "First word of the business name" },
+  { tag: "first_name", desc: "Contact's first name (person)" },
+  { tag: "last_name", desc: "Contact's last name" },
+  { tag: "business_name", desc: "Company / business name" },
+  { tag: "job_title", desc: "Contact's job title" },
   { tag: "category", desc: "Primary category (e.g. Medical spa)" },
   { tag: "city", desc: "City" },
   { tag: "state", desc: "State" },

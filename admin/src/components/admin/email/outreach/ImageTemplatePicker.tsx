@@ -125,7 +125,7 @@ export default function ImageTemplatePicker({ value, onChange, onInsertTag, body
     try {
       // Realistic sample values, so the fit of a real name is obvious.
       const sample: Record<string, string> = {
-        business_name: "Glow Med Spa", name: "Glow Med Spa", first_name: "Glow",
+        business_name: "Luxwall", company: "Luxwall", name: "Jack Cunningham", first_name: "Jack", last_name: "Cunningham", job_title: "Director of Sales",
         category: "Medical spa", city: "Austin", state: "TX",
         address: "1420 Maple Ave", zip: "78704",
         website: "glowmedspa.com", phone: "(512) 555-0142",

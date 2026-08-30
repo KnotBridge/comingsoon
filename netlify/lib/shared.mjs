@@ -47,11 +47,22 @@ export function mergeValues(c) {
     }
   }
 
+  // Person-level lists store the owner's name + their company in business_data.
+  // When that's present, {{first_name}} must be the PERSON and {{business_name}}
+  // the company — not the first word of whatever is in name.
+  const bdFirst = str(bd?.first_name).trim();
+  const bdLast = str(bd?.last_name).trim();
+  const bdCompany = str(bd?.company_name).trim();
+
   return {
     ...extra, // scraped extras first so curated names below take precedence
-    business_name: c.name || "",
+    business_name: bdCompany || c.name || "",
+    company: bdCompany || c.name || "",
     name: c.name || "",
-    first_name: firstToken(c.name),
+    first_name: bdFirst || firstToken(c.name),
+    last_name: bdLast,
+    full_name: [bdFirst, bdLast].filter(Boolean).join(" ") || (c.name || ""),
+    job_title: str(bd?.job_title),
     category: cat,
     categories: Array.isArray(c.categories) ? c.categories.join(", ") : str(c.categories),
     city: c.city || "",

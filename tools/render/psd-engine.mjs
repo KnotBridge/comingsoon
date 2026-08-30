@@ -21,7 +21,7 @@ initializeCanvas(
 
 // Bump when rendering OUTPUT changes, so cached renders are regenerated
 // instead of serving art made by an older version of this engine.
-export const ENGINE_VERSION = "2";
+export const ENGINE_VERSION = "3";
 
 let fontsReady = false;
 /** Load system fonts once, plus any .ttf/.otf dropped in tools/render/fonts. */
@@ -36,7 +36,8 @@ export function ensureFonts(extraDir) {
 const KNOWN_TAGS = new Set([
   "business_name", "name", "first_name", "category", "city", "state", "address",
   "zip", "postal_code", "website", "domain", "phone", "rating", "review_count",
-  "maps_url", "email", "sender_name", "sender_first_name", "sender_email",
+  "maps_url", "email", "last_name", "full_name", "job_title", "company",
+  "sender_name", "sender_first_name", "sender_email",
 ]);
 
 // PSD blend modes that canvas can reproduce directly.
