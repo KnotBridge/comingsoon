@@ -19,6 +19,10 @@ initializeCanvas(
   (width, height) => new ImageData(width, height)
 );
 
+// Bump when rendering OUTPUT changes, so cached renders are regenerated
+// instead of serving art made by an older version of this engine.
+export const ENGINE_VERSION = "2";
+
 let fontsReady = false;
 /** Load system fonts once, plus any .ttf/.otf dropped in tools/render/fonts. */
 export function ensureFonts(extraDir) {
@@ -34,6 +38,15 @@ const KNOWN_TAGS = new Set([
   "zip", "postal_code", "website", "domain", "phone", "rating", "review_count",
   "maps_url", "email", "sender_name", "sender_first_name", "sender_email",
 ]);
+
+// PSD blend modes that canvas can reproduce directly.
+const BLEND = {
+  normal: "source-over", multiply: "multiply", screen: "screen", overlay: "overlay",
+  darken: "darken", lighten: "lighten", "color dodge": "color-dodge",
+  "color burn": "color-burn", "hard light": "hard-light", "soft light": "soft-light",
+  difference: "difference", exclusion: "exclusion", hue: "hue",
+  saturation: "saturation", color: "color", luminosity: "luminosity",
+};
 
 const isTextLayer = (l) => !!(l && l.text && typeof l.text.text === "string");
 
@@ -117,6 +130,10 @@ function fontOf(text) {
   };
 }
 
+// Long replacements are fitted to slightly LESS than the original span, so a
+// name can never touch the edge of the object it is printed on.
+const FIT_MARGIN = 0.92;
+
 const JUSTIFY = { left: "left", center: "center", right: "right" };
 const justifyOf = (text) =>
   JUSTIFY[text?.paragraphStyle?.justification] || JUSTIFY[text?.style?.justification] || "left";
@@ -194,73 +211,87 @@ export function renderPsd(buffer, values = {}, opts = {}) {
     const replacement = Object.prototype.hasOwnProperty.call(values, id) ? String(values[id] ?? "") : null;
     const canvas = layer.canvas;
     const alpha = layer.opacity == null ? 1 : layer.opacity;
+    const blend = BLEND[layer.blendMode] || "source-over";
 
-    // Untouched layer: paint the art Photoshop already produced.
+    // Untouched layer: paint the art Photoshop already produced, in its own
+    // blend mode so the composite matches the PSD.
     if (replacement === null || !isTextLayer(layer)) {
       if (canvas) {
         ctx.save();
         ctx.globalAlpha = alpha;
+        ctx.globalCompositeOperation = blend;
         ctx.drawImage(canvas, layer.left || 0, layer.top || 0);
         ctx.restore();
       }
       return;
     }
 
-    // Replaced text layer: drop the original pixels, draw the new string in their place.
-    if (!replacement.trim()) return; // empty value => layer simply disappears
+    if (!replacement.trim()) return; // empty value => the layer simply disappears
     const t = layer.text;
     const f = fontOf(t);
-    const ink = canvas ? inkBounds(canvas) : null;
-    const boxLeft = (layer.left || 0) + (ink ? ink.minX : 0);
-    const boxRight = (layer.left || 0) + (ink ? ink.maxX : (layer.right || 0) - (layer.left || 0));
-    const boxTop = (layer.top || 0) + (ink ? ink.minY : 0);
-    const boxBottom = (layer.top || 0) + (ink ? ink.maxY : (layer.bottom || 0) - (layer.top || 0));
 
     ctx.save();
     ctx.globalAlpha = alpha;
+    // The blend mode is what makes ink look printed ON the object rather than
+    // pasted over it — "overlay" lets the mug's shading and texture through.
+    ctx.globalCompositeOperation = blend;
     ctx.fillStyle = colorOf(t);
-    const align = justifyOf(t);
+
+    // Photoshop stores the layer's rotation/scale/skew as an affine matrix whose
+    // origin is the text's own baseline anchor. Adopting it verbatim means the
+    // replacement sits on the same slant as the original — essential when the
+    // words are meant to look written on a curved, angled surface.
+    const tr = Array.isArray(t.transform) && t.transform.length === 6 ? t.transform : null;
+    if (tr) ctx.transform(tr[0], tr[1], tr[2], tr[3], tr[4], tr[5]);
+
     let size = f.size;
     const setFont = (px) => { ctx.font = `${f.style} ${f.weight} ${px}px "${f.family}", Arial, sans-serif`; };
     setFont(size);
 
-    // Never let a longer name overflow the artwork: shrink to fit the original width.
-    const targetW = Math.max(1, boxRight - boxLeft);
-    if (ink) {
-      let m = ctx.measureText(replacement);
-      let guard = 0;
-      while (m.width > targetW && size > 6 && guard++ < 80) {
-        size -= 1;
-        setFont(size);
-        m = ctx.measureText(replacement);
-      }
+    // Fit against the ORIGINAL string's width in the layer's own text space, so
+    // a longer name shrinks instead of running off the object.
+    const original = String(t.text || "").replace(/[\r\n]+$/, "");
+    const w0 = Math.max(1, ctx.measureText(original).width);
+    let w1 = ctx.measureText(replacement).width;
+    let guard = 0;
+    while (w1 > w0 * FIT_MARGIN && size > 8 && guard++ < 200) {
+      size -= 1;
+      setFont(size);
+      w1 = ctx.measureText(replacement).width;
     }
-
-    const m = ctx.measureText(replacement);
-    const ascent = m.actualBoundingBoxAscent || size * 0.75;
-    const descent = m.actualBoundingBoxDescent || size * 0.25;
-    // Sit the new text on the same optical centre line as the old text.
-    const centreY = ink ? (boxTop + boxBottom) / 2 : (layer.top || 0) + size / 2;
-    const baseline = centreY + (ascent - descent) / 2;
 
     ctx.textBaseline = "alphabetic";
-    // Single-line replacements (a name) are centred on the original text's own
-    // centre, so a longer or shorter name grows symmetrically instead of running
-    // off one side — which is what keeps it inside a mug, badge or label.
-    const singleLine = !replacement.includes("\n");
-    if (ink && singleLine) {
-      ctx.textAlign = "center";
-      var x = (boxLeft + boxRight) / 2;
-    } else {
-      ctx.textAlign = align;
-      var x = align === "center" ? (boxLeft + boxRight) / 2 : align === "right" ? boxRight : boxLeft;
+    ctx.textAlign = "left";
+    // Centre the replacement over the span the original occupied, so short and
+    // long names both grow from the same point.
+    const align = justifyOf(t);
+    let x = 0;
+    if (!replacement.includes("\n")) {
+      x = align === "right" ? (w0 - w1) : align === "center" ? (w0 - w1) / 2 : (w0 - w1) / 2;
     }
-    ctx.fillText(replacement, x, baseline);
+
+    if (tr) {
+      // Origin is the baseline anchor: draw straight onto it.
+      ctx.fillText(replacement, x, 0);
+    } else {
+      // No transform recorded — fall back to the ink bounds of the rendered layer.
+      const ink = canvas ? inkBounds(canvas) : null;
+      const left = (layer.left || 0) + (ink ? ink.minX : 0);
+      const right = (layer.left || 0) + (ink ? ink.maxX : (layer.right || 0) - (layer.left || 0));
+      const top = (layer.top || 0) + (ink ? ink.minY : 0);
+      const bottom = (layer.top || 0) + (ink ? ink.maxY : (layer.bottom || 0) - (layer.top || 0));
+      const m = ctx.measureText(replacement);
+      const ascent = m.actualBoundingBoxAscent || size * 0.75;
+      const descent = m.actualBoundingBoxDescent || size * 0.25;
+      ctx.textAlign = "center";
+      ctx.fillText(replacement, (left + right) / 2, (top + bottom) / 2 + (ascent - descent) / 2);
+    }
     ctx.restore();
   });
 
   return out.toBuffer("image/png");
 }
+
 
 /** Values keyed by layer id, resolved from a {layerId -> tag} mapping + merge values. */
 export function valuesForMapping(mapping, mergeValues) {

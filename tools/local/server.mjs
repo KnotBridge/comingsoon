@@ -14,7 +14,7 @@ import { createHash } from "crypto";
 import { readdirSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath, pathToFileURL } from "url";
-import { scanPsd, renderPsd, ensureFonts } from "../render/psd-engine.mjs";
+import { scanPsd, renderPsd, ensureFonts, ENGINE_VERSION } from "../render/psd-engine.mjs";
 import { loadEnv } from "./env.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -141,7 +141,8 @@ const hashOf = (o) => createHash("sha1").update(JSON.stringify(o)).digest("hex")
 
 /** Render values -> PNG -> public URL, reusing an identical earlier render. */
 async function renderAndStore(tpl, values, tag = "r") {
-  const key = hashOf(values);
+  // Version the key so a renderer improvement never serves stale artwork.
+  const key = hashOf({ v: ENGINE_VERSION, values });
   const { data: hit } = await sb.from("image_renders")
     .select("url").eq("image_template_id", tpl.id).eq("value_hash", key).maybeSingle();
   if (hit?.url) return hit.url;
