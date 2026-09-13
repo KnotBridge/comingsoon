@@ -9,9 +9,11 @@ import { admin, json, threadKey, snippet } from "../lib/shared.mjs";
 //   - warm-up peers (pool signs each mail "Phone_N0:") -> body/subject signature
 // Accounts run in parallel with a per-account timeout to stay within limits.
 const CONCURRENCY = 12;
-const PER_ACCOUNT_MS = 12000;
+const PER_ACCOUNT_MS = 6000;   // per-mailbox budget (TLS+login+search+fetch)
+const OVERALL_MS = 8000;       // hard wall-clock budget: Netlify sync fns cap at ~10s,
+                               // so we must always answer before that (else HTTP 502).
 const MAX_MSGS = 30;
-const WINDOW_MS = 3 * 24 * 3600 * 1000;
+const WINDOW_MS = 24 * 3600 * 1000; // fetch the last 24h, not 3 days (less work/run)
 const WARMUP_RE = /Phone_N0\s*:/i;
 
 async function syncOne(sb, s, since) {
@@ -76,7 +78,7 @@ async function syncOne(sb, s, since) {
 
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), ms))]);
 
-export default async () => {
+export default async (_req, opts = {}) => {
   const sb = admin();
   const { data: senders } = await sb.from("email_sender_accounts")
     .select("id,from_email,imap_host,imap_user,imap_password,imap_port")
@@ -85,16 +87,33 @@ export default async () => {
 
   const since = new Date(Date.now() - WINDOW_MS);
   const queue = senders.filter((s) => s.imap_host && s.imap_user && s.imap_password);
+  // The HTTP "Sync" button must stay under Netlify's ~10s sync-function limit, so
+  // it uses the default OVERALL_MS. The scheduled cron passes a longer budgetMs
+  // (scheduled functions can run for minutes) so it can finish the slow mailboxes.
+  const budgetMs = opts.budgetMs || OVERALL_MS;
+  const deadline = Date.now() + budgetMs;
   let imported = 0, ok = 0, failed = 0;
 
+  let disabled = 0;
   const worker = async () => {
     while (queue.length) {
+      if (Date.now() > deadline) return; // out of budget: stop, the 5-min cron finishes the rest
       const s = queue.shift();
       try { imported += await withTimeout(syncOne(sb, s, since), PER_ACCOUNT_MS); ok++; }
-      catch (e) { failed++; console.error("imap", s.from_email, e?.message); }
+      catch (e) {
+        failed++; console.error("imap", s.from_email, e?.message);
+        // A mailbox that rejects our login is gone or its password changed. Stop
+        // syncing it so it can't keep erroring or stall the mailbox on its timeout
+        // every cycle. Re-enable it by fixing the IMAP password in sender settings.
+        if (e?.authenticationFailed) {
+          await sb.from("email_sender_accounts").update({ imap_enabled: false }).eq("id", s.id);
+          disabled++;
+          console.error("imap", s.from_email, "-> auth failed; disabled IMAP for this account");
+        }
+      }
     }
   };
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker));
 
-  return json({ processed: imported, mailboxes: senders.length, ok, failed });
+  return json({ processed: imported, mailboxes: senders.length, ok, failed, disabled, budget_ms: budgetMs, elapsed_ms: Date.now() - (deadline - budgetMs) });
 };
