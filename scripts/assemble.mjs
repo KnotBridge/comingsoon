@@ -14,7 +14,7 @@ const SKIP = new Set([
   "tools", // local-only PSD renderer + mailer; never published
   ".git", ".github", ".netlify",
   "package.json", "package-lock.json", "bun.lock", "netlify.toml",
-  ".gitignore", "DEPLOY-SECRETS.txt", "README.md",
+  ".gitignore", "DEPLOY-SECRETS.txt", "README.md", "deploy.env",
 ]);
 
 let copied = 0;
