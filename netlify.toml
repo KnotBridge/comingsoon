@@ -7,6 +7,11 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # The anon key + Supabase URL are intentionally public (they must ship in the
+  # client bundle). ADMIN_CODE has a hardcoded fallback in admin-login. These are
+  # not the real secret (SERVICE_ROLE_KEY / admin password live only in Netlify
+  # env), so tell Netlify's secrets scanner to skip these specific keys.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_ANON_KEY,SUPABASE_URL,ADMIN_CODE"
 
 # Friendly API path -> functions.
 [[redirects]]

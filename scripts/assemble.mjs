@@ -35,6 +35,12 @@ const dragToml = `# Pre-built drag-and-drop deploy. No build runs; this folder i
 [functions]
   directory = "netlify/functions"
 
+# Anon key + URL are public (in the client bundle); ADMIN_CODE has a hardcoded
+# fallback. Tell Netlify's secrets scanner these keys are expected. The real
+# secret (SERVICE_ROLE_KEY / admin password) is only in Netlify env.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_ANON_KEY,SUPABASE_URL,ADMIN_CODE"
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
